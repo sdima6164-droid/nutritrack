@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#07070F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>NutriTrack · БЖУ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+
+  <!-- ═══════════════ ДНЕВНИК ═══════════════ -->
+  <div id="page-diary" class="page active">
+
+    <header class="page-header">
+      <div class="page-title">NutriTrack</div>
+      <p class="page-sub">Дневник питания</p>
+    </header>
+
+    <div class="date-strip">
+      <button type="button" class="date-btn" onclick="currentDate=shiftDate(currentDate,-1);renderDiary()" aria-label="Предыдущий день">‹</button>
+      <div class="date-display" id="date-display">Сегодня</div>
+      <button type="button" class="date-btn" onclick="currentDate=shiftDate(currentDate,1);renderDiary()" aria-label="Следующий день">›</button>
+    </div>
+
+    <div class="rings-row">
+      <div class="ring-card">
+        <div class="ring-wrap" id="ring-p">
+          <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill protein" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="ring-center"><span class="ring-pct protein">0%</span></div>
+        </div>
+        <div class="ring-label clr-protein">Белки</div>
+        <div class="ring-val">0г</div>
+      </div>
+
+      <div class="ring-card">
+        <div class="ring-wrap" id="ring-f">
+          <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill fat" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="ring-center"><span class="ring-pct fat">0%</span></div>
+        </div>
+        <div class="ring-label clr-fat">Жиры</div>
+        <div class="ring-val">0г</div>
+      </div>
+
+      <div class="ring-card">
+        <div class="ring-wrap" id="ring-c">
+          <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill carb" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="ring-center"><span class="ring-pct carb">0%</span></div>
+        </div>
+        <div class="ring-label clr-carb">Углеводы</div>
+        <div class="ring-val">0г</div>
+      </div>
+
+      <div class="ring-card">
+        <div class="ring-wrap" id="ring-k">
+          <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill kcal" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="ring-center"><span class="ring-pct kcal">0%</span></div>
+        </div>
+        <div class="ring-label clr-kcal">Калории</div>
+        <div class="ring-val">0</div>
+      </div>
+    </div>
+
+    <div class="totals-card">
+      <div class="totals-grid">
+        <div class="total-item t-p">
+          <div class="t-val" id="total-p">0г</div>
+          <div class="t-label">Белки</div>
+        </div>
+        <div class="total-item t-f">
+          <div class="t-val" id="total-f">0г</div>
+          <div class="t-label">Жиры</div>
+        </div>
+        <div class="total-item t-c">
+          <div class="t-val" id="total-c">0г</div>
+          <div class="t-label">Углеводы</div>
+        </div>
+        <div class="total-item t-k">
+          <div class="t-val" id="total-k">0</div>
+          <div class="t-label">ккал</div>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="add-btn" onclick="openModal()">
+      <span class="btn-icon" aria-hidden="true">+</span> Добавить продукт
+    </button>
+
+    <p class="section-title">Что сегодня ел(а)</p>
+    <div class="food-list" id="food-list">
+      <div class="empty-state">
+        <div class="empty-icon" aria-hidden="true">🍽️</div>
+        <p>Нет записей за этот день.<br>Нажмите «+ Добавить продукт»</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ ПРОФИЛЬ ═══════════════ -->
+  <div id="page-profile" class="page">
+
+    <header class="page-header">
+      <div class="page-title">Профиль</div>
+    </header>
+
+    <div class="streak-card">
+      <div class="streak-icon" aria-hidden="true">🔥</div>
+      <div class="streak-text">
+        <div class="s-val" id="streak-val">0</div>
+        <div class="s-label" id="streak-label">дней подряд</div>
+      </div>
+      <div class="streak-right">
+        <div class="streak-days" id="stat-days">0</div>
+        <div class="streak-days-label">дней записей</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="sv" id="stat-avgkcal">0</div>
+        <div class="sl">ккал/день (7 дней)</div>
+      </div>
+      <div class="stat-box">
+        <div class="sv" id="prof-bmi-display">—</div>
+        <div class="sl">ИМТ</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">📊 БЖУ за неделю (граммы)</div>
+      <div class="chart-wrap" id="week-chart-wrap">
+        <div class="no-chart-data">
+          <div class="nc-icon" aria-hidden="true">📊</div>
+          <span>Добавьте продукты, чтобы увидеть статистику</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-form">
+      <p class="form-section-title">Обо мне</p>
+      <div class="form-group">
+        <label class="form-label" for="prof-name">Имя</label>
+        <input id="prof-name" class="form-input" type="text" placeholder="Введите имя" autocomplete="name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="prof-age">Возраст</label>
+          <input id="prof-age" class="form-input" type="number" placeholder="25" min="10" max="100" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prof-height">Рост (см)</label>
+          <input id="prof-height" class="form-input" type="number" placeholder="175" min="100" max="250" inputmode="numeric" onchange="updateBMI()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="prof-weight">Вес (кг)</label>
+        <input id="prof-weight" class="form-input" type="number" placeholder="70" min="30" max="300" inputmode="decimal" onchange="updateBMI()">
+      </div>
+
+      <p class="form-section-title">Моя цель</p>
+      <div class="goal-selector">
+        <button type="button" class="goal-opt" data-goal="cut" onclick="setGoal('cut')">✂️ Сушка</button>
+        <button type="button" class="goal-opt active" data-goal="maintain" onclick="setGoal('maintain')">⚖️ Поддержание</button>
+        <button type="button" class="goal-opt" data-goal="bulk" onclick="setGoal('bulk')">💪 Набор</button>
+      </div>
+
+      <p class="form-section-title">Суточные цели (г / ккал)</p>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label clr-protein" for="prof-targetP">Белки (г)</label>
+          <input id="prof-targetP" class="form-input" type="number" placeholder="150" min="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label clr-fat" for="prof-targetF">Жиры (г)</label>
+          <input id="prof-targetF" class="form-input" type="number" placeholder="65" min="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label clr-carb" for="prof-targetC">Углеводы (г)</label>
+          <input id="prof-targetC" class="form-input" type="number" placeholder="200" min="0" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label clr-kcal" for="prof-targetK">Калории (ккал)</label>
+        <input id="prof-targetK" class="form-input" type="number" placeholder="2000" min="0" inputmode="numeric">
+      </div>
+
+      <button type="button" class="btn-save" onclick="saveProfile()">💾 Сохранить профиль</button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ НУТРИЦИОЛОГ ═══════════════ -->
+  <div id="page-nutri" class="page">
+
+    <header class="page-header">
+      <div class="page-title">Нутрициолог</div>
+    </header>
+
+    <div class="nutri-hero">
+      <div class="nh-icon" aria-hidden="true">🥗</div>
+      <div class="nh-title">Твой личный нутрициолог</div>
+      <p class="nh-sub">Анализирую твой рацион за последние 7 дней и даю персональные советы</p>
+    </div>
+
+    <div class="daily-tip">
+      <div class="dt-label">💡 Совет дня</div>
+      <div id="daily-tip-text"></div>
+    </div>
+
+    <p class="section-title">Персональный анализ</p>
+    <div id="advice-container"></div>
+
+    <div class="question-section">
+      <div class="qs-title">💬 Задать вопрос нутрициологу</div>
+      <label class="visually-hidden" for="nutri-question">Вопрос нутрициологу</label>
+      <textarea class="question-input" id="nutri-question"
+        placeholder="Например: как набрать мышечную массу? как похудеть? что такое омега-3?"></textarea>
+      <button type="button" class="btn-ask" onclick="askNutritionist()">Получить ответ →</button>
+      <div class="answer-bubble" id="nutri-answer" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="spacer-sm"></div>
+
+  </div>
+
+  <!-- ═══════════════ НАВИГАЦИЯ ═══════════════ -->
+  <nav class="bottom-nav" aria-label="Основная навигация">
+    <button type="button" class="nav-btn active" id="nav-diary" onclick="switchTab('diary')" aria-current="page">
+      <span class="icon" aria-hidden="true">📋</span>
+      <span>Дневник</span>
+    </button>
+    <button type="button" class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
+      <span class="icon" aria-hidden="true">👤</span>
+      <span>Профиль</span>
+    </button>
+    <button type="button" class="nav-btn" id="nav-nutri" onclick="switchTab('nutri')">
+      <span class="icon" aria-hidden="true">🥗</span>
+      <span>Нутрициолог</span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════ МОДАЛЬНОЕ ОКНО ═══════════════ -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Добавить продукт">
+    <div class="modal">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <div class="modal-title">Добавить продукт</div>
+        <button type="button" class="modal-close" onclick="closeModal()" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modal-tabs" role="tablist">
+        <button type="button" class="modal-tab active" id="mtab-search" role="tab" aria-selected="true" onclick="switchModalTab('search')">🔍 База продуктов</button>
+        <button type="button" class="modal-tab" id="mtab-manual" role="tab" aria-selected="false" onclick="switchModalTab('manual')">✏️ Ручной ввод</button>
+      </div>
+
+      <div class="modal-body">
+
+        <div id="modal-search-panel" role="tabpanel">
+          <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input class="search-input" id="search-input" type="search"
+              placeholder="Поиск: курица, гречка, яблоко..."
+              oninput="handleSearch()" autocomplete="off">
+          </div>
+
+          <div class="food-search-results" id="food-results" aria-live="polite"></div>
+
+          <div class="weight-section" id="weight-section">
+            <div class="weight-label">Вес порции</div>
+            <div class="weight-row">
+              <label class="visually-hidden" for="weight-input">Вес в граммах</label>
+              <input class="weight-input" id="weight-input" type="number" value="100" min="1" max="5000" inputmode="numeric" oninput="updatePreview()">
+              <span class="weight-unit">граммов</span>
+            </div>
+            <div class="weight-presets">
+              <button type="button" class="weight-preset" onclick="setWeightPreset(50)">50г</button>
+              <button type="button" class="weight-preset" onclick="setWeightPreset(100)">100г</button>
+              <button type="button" class="weight-preset" onclick="setWeightPreset(150)">150г</button>
+              <button type="button" class="weight-preset" onclick="setWeightPreset(200)">200г</button>
+              <button type="button" class="weight-preset" onclick="setWeightPreset(250)">250г</button>
+              <button type="button" class="weight-preset" onclick="setWeightPreset(300)">300г</button>
+            </div>
+            <div class="preview-macros">
+              <div class="preview-item pp">
+                <div class="pv" id="prev-p">—</div>
+                <div class="pl">Белки</div>
+              </div>
+              <div class="preview-item pf">
+                <div class="pv" id="prev-f">—</div>
+                <div class="pl">Жиры</div>
+              </div>
+              <div class="preview-item pc">
+                <div class="pv" id="prev-c">—</div>
+                <div class="pl">Углеводы</div>
+              </div>
+              <div class="preview-item pk">
+                <div class="pv" id="prev-k">—</div>
+                <div class="pl">ккал</div>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-primary" onclick="addFoodFromSearch()">+ Добавить в дневник</button>
+        </div>
+
+        <div id="modal-manual-panel" role="tabpanel" hidden>
+          <div class="form-group">
+            <label class="form-label" for="manual-name">Название продукта</label>
+            <input id="manual-name" class="form-input" type="text" placeholder="Например: домашние котлеты" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="manual-weight">Вес порции (г)</label>
+            <input id="manual-weight" class="form-input" type="number" placeholder="150" min="1" inputmode="numeric">
+          </div>
+          <p class="form-section-title form-section-title--sm">БЖУ на 100 г продукта</p>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label clr-protein" for="manual-p">Белки (г)</label>
+              <input id="manual-p" class="form-input" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label class="form-label clr-fat" for="manual-f">Жиры (г)</label>
+              <input id="manual-f" class="form-input" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label class="form-label clr-carb" for="manual-c">Углеводы (г)</label>
+              <input id="manual-c" class="form-input" type="number" placeholder="0" min="0" step="0.1" inputmode="decimal">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label clr-kcal" for="manual-k">Калории (ккал на 100г, необязательно)</label>
+            <input id="manual-k" class="form-input" type="number" placeholder="Рассчитается автоматически" min="0" inputmode="numeric">
+          </div>
+          <button type="button" class="btn-primary" onclick="addFoodManual()">+ Добавить в дневник</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="foods-db.js"></script>
+<script src="app.js"></script>
+<script>
+  function updateBMI() {
+    var w = parseFloat(document.getElementById('prof-weight').value);
+    var h = parseInt(document.getElementById('prof-height').value, 10);
+    if (w && h) {
+      document.getElementById('prof-bmi-display').textContent = round1(w / ((h / 100) * (h / 100)));
+    }
+  }
+</script>
+</body>
+</html>
