@@ -71,6 +71,36 @@ function getTargets() {
   };
 }
 
+/* ===== WATER ===== */
+const WATER_GOAL = 2000;
+
+function getWater(date) {
+  return parseInt(localStorage.getItem('bju_water_' + date) || '0', 10);
+}
+
+function setWater(date, ml) {
+  localStorage.setItem('bju_water_' + date, String(ml));
+}
+
+function renderWater() {
+  const ml   = getWater(currentDate);
+  const pct  = Math.min(ml / WATER_GOAL, 1);
+  const top  = (1 - pct) * 100;
+  const mlEl  = document.getElementById('water-ml');
+  const wave  = document.getElementById('water-wave');
+  const wave2 = document.getElementById('water-wave2');
+  if (mlEl)  mlEl.textContent    = ml;
+  if (wave)  wave.style.top      = top + '%';
+  if (wave2) wave2.style.top     = Math.min(top + 3, 100) + '%';
+}
+
+function changeWater(delta) {
+  const ml = Math.max(0, Math.min(WATER_GOAL, getWater(currentDate) + delta));
+  setWater(currentDate, ml);
+  renderWater();
+  if (delta > 0 && ml >= WATER_GOAL) showToast('💧 Цель по воде достигнута!');
+}
+
 /* ===== MACRO CALCULATIONS ===== */
 function calcEntry(food, weight) {
   const w = weight / 100;
@@ -129,6 +159,8 @@ function renderDiary() {
   // Food list
   const listEl = document.getElementById('food-list');
   if (!listEl) return;
+
+  renderWater();
 
   if (entries.length === 0) {
     listEl.innerHTML = `

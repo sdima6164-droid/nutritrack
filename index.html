@@ -108,6 +108,24 @@
       <span class="btn-icon" aria-hidden="true">+</span> Добавить продукт
     </button>
 
+    <p class="section-title">Вода</p>
+    <div class="water-card">
+      <div class="water-circle">
+        <div class="water-wave" id="water-wave"></div>
+        <div class="water-wave water-wave2" id="water-wave2"></div>
+        <div class="water-info">
+          <span class="water-ml" id="water-ml">0</span>
+          <span class="water-unit">мл</span>
+          <span class="water-goal-label">из 2000</span>
+        </div>
+      </div>
+      <div class="water-controls">
+        <button type="button" class="water-btn water-btn-minus" onclick="changeWater(-250)" aria-label="Убрать 250 мл">−</button>
+        <span class="water-step-label">250 мл</span>
+        <button type="button" class="water-btn water-btn-plus" onclick="changeWater(250)" aria-label="Добавить 250 мл">+</button>
+      </div>
+    </div>
+
     <p class="section-title">Что сегодня ел(а)</p>
     <div class="food-list" id="food-list">
       <div class="empty-state">
