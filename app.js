@@ -148,7 +148,8 @@ function renderDiary() {
 }
 
 function renderRing(id, type, val, target, label) {
-  const el = document.getElementById(id);
+  const el = document.getElementById(id);       // это .ring-wrap
+  const card = el.closest('.ring-card');         // поднимаемся к карточке
   const pct = target > 0 ? Math.min(Math.round((val / target) * 100), 100) : 0;
   const r = 30;
   const circ = 2 * Math.PI * r;
@@ -157,7 +158,7 @@ function renderRing(id, type, val, target, label) {
   fill.style.strokeDasharray = circ;
   fill.style.strokeDashoffset = offset;
   el.querySelector('.ring-pct').textContent = pct + '%';
-  el.querySelector('.ring-val').textContent = round1(val) + (label === 'ккал' ? '' : 'г');
+  card.querySelector('.ring-val').textContent = round1(val) + (label === 'ккал' ? '' : 'г');
 }
 
 function deleteEntry(index) {
@@ -174,8 +175,6 @@ function openModal() {
   document.getElementById('modal-overlay').classList.add('open');
   document.getElementById('search-input').value = '';
   document.getElementById('weight-input').value = '100';
-  document.getElementById('modal-search-panel').style.display = 'block';
-  document.getElementById('modal-manual-panel').style.display = 'none';
   document.getElementById('food-results').innerHTML = '';
   updatePreview();
   switchModalTab('search');
@@ -188,10 +187,23 @@ function closeModal() {
 
 function switchModalTab(tab) {
   modalTab = tab;
-  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('mtab-' + tab).classList.add('active');
-  document.getElementById('modal-search-panel').style.display = tab === 'search' ? 'block' : 'none';
-  document.getElementById('modal-manual-panel').style.display = tab === 'manual' ? 'block' : 'none';
+  document.querySelectorAll('.modal-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  const activeTab = document.getElementById('mtab-' + tab);
+  activeTab.classList.add('active');
+  activeTab.setAttribute('aria-selected', 'true');
+
+  const search = document.getElementById('modal-search-panel');
+  const manual = document.getElementById('modal-manual-panel');
+  if (tab === 'search') {
+    search.removeAttribute('hidden');
+    manual.setAttribute('hidden', '');
+  } else {
+    manual.removeAttribute('hidden');
+    search.setAttribute('hidden', '');
+  }
 }
 
 function handleSearch() {
