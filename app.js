@@ -168,6 +168,7 @@ function renderDiary() {
   if (!listEl) return;
 
   renderWater();
+  analyzeNutrition();
 
   if (entries.length === 0) {
     listEl.innerHTML = `
@@ -513,6 +514,44 @@ function renderWeekChart() {
       }
     }
   });
+}
+
+/* ===== SMART ADVISOR ===== */
+function analyzeNutrition() {
+  const entries = getDayLog(currentDate);
+  const totals  = sumLog(entries);
+  const targets = getTargets();
+  const water   = getWater(currentDate);
+  const hour    = new Date().getHours();
+
+  const pRatio = targets.proteins > 0 ? totals.proteins / targets.proteins : 0;
+  const cRatio = targets.carbs    > 0 ? totals.carbs    / targets.carbs    : 0;
+  const fRatio = targets.fats     > 0 ? totals.fats     / targets.fats     : 0;
+  const wRatio = water / WATER_GOAL;
+
+  let advice;
+
+  if (wRatio < 0.5) {
+    advice = '💧 Твой организм просит пить! Выпей стакан воды прямо сейчас.';
+  } else if (pRatio < 0.5 && hour >= 12) {
+    advice = '💪 Недобор белка! Отличным перекусом станет творог или пара вареных яиц.';
+  } else if (cRatio > 0.9) {
+    advice = '🍞 Углеводы на пределе. Дальше лучше сделать упор на овощи и легкий белок.';
+  } else if (
+    pRatio >= 0.8 && pRatio <= 1.2 &&
+    cRatio >= 0.5 && cRatio <= 1.0 &&
+    fRatio >= 0.5 && fRatio <= 1.2 &&
+    wRatio >= 0.5
+  ) {
+    advice = '✨ Ты в отличной форме! БЖУ в идеальном балансе, так держать!';
+  } else if (entries.length === 0) {
+    advice = '🍽️ Добавь первый приём пищи, чтобы получить персональный совет.';
+  } else {
+    advice = '📊 Продолжай следить за рационом — советы обновятся по мере добавления данных.';
+  }
+
+  const el = document.getElementById('sa-text');
+  if (el) el.textContent = advice;
 }
 
 /* ===== NUTRITIONIST PAGE ===== */
