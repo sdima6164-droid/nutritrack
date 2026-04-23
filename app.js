@@ -95,10 +95,14 @@ function renderWater() {
 }
 
 function changeWater(delta) {
-  const ml = Math.max(0, Math.min(WATER_GOAL, getWater(currentDate) + delta));
+  const prev = getWater(currentDate);
+  const ml = Math.max(0, Math.min(WATER_GOAL, prev + delta));
   setWater(currentDate, ml);
   renderWater();
-  if (delta > 0 && ml >= WATER_GOAL) showToast('💧 Цель по воде достигнута!');
+  if (delta > 0 && ml >= WATER_GOAL) {
+    showToast('💧 Цель по воде достигнута!');
+    if (prev < WATER_GOAL) launchConfetti();
+  }
 }
 
 /* ===== MACRO CALCULATIONS ===== */
@@ -383,7 +387,7 @@ function renderProfile() {
   });
 
   // Stats
-  const streak = calcStreak();
+  const streak = (JSON.parse(localStorage.getItem('bju_streak') || 'null') || {}).count || 0;
   const sv = document.getElementById('streak-val');   if (sv) sv.textContent = streak;
   const sl = document.getElementById('streak-label'); if (sl) sl.textContent = streak === 1 ? 'день подряд' : (streak < 5 ? 'дня подряд' : 'дней подряд');
 
@@ -825,6 +829,36 @@ async function fetchProductByBarcode(barcode) {
   }
 }
 
+/* ===== STREAKS & GAMIFICATION ===== */
+function updateStreak() {
+  const today = todayStr();
+  const stored = JSON.parse(localStorage.getItem('bju_streak') || 'null');
+
+  if (!stored) {
+    localStorage.setItem('bju_streak', JSON.stringify({ count: 1, lastDate: today }));
+    return { count: 1, increased: false };
+  }
+  if (stored.lastDate === today) {
+    return { count: stored.count, increased: false };
+  }
+
+  const yesterday = shiftDate(today, -1);
+  const increased = stored.lastDate === yesterday;
+  const count = increased ? stored.count + 1 : 1;
+  localStorage.setItem('bju_streak', JSON.stringify({ count, lastDate: today }));
+  return { count, increased };
+}
+
+function launchConfetti() {
+  if (typeof confetti !== 'function') return;
+  confetti({
+    particleCount: 120,
+    spread: 80,
+    origin: { y: 0.55 },
+    colors: ['#3DFFA0', '#00D4FF', '#C07AFF', '#FF9B5C', '#FFFFFF'],
+  });
+}
+
 /* ===== PWA ===== */
 let _installPrompt = null;
 
@@ -856,9 +890,13 @@ function installApp() {
 
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  const { count, increased } = updateStreak();
+  const badgeEl = document.getElementById('streak-badge-val');
+  if (badgeEl) badgeEl.textContent = count;
+  if (increased) launchConfetti();
+
   switchTab('diary');
 
-  // Close modal on overlay click
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });

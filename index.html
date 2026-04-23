@@ -25,8 +25,15 @@
   <div id="page-diary" class="page active">
 
     <header class="page-header">
-      <div class="page-title">NutriTrack</div>
-      <p class="page-sub">Дневник питания</p>
+      <div>
+        <div class="page-title">NutriTrack</div>
+        <p class="page-sub">Дневник питания</p>
+      </div>
+      <div class="streak-badge" id="streak-badge" aria-label="Стрик дней">
+        <span class="sb-fire" aria-hidden="true">🔥</span>
+        <strong class="sb-val" id="streak-badge-val">0</strong>
+        <span class="sb-label">дней</span>
+      </div>
     </header>
 
     <div class="date-strip">
@@ -417,6 +424,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="foods-db.js"></script>
