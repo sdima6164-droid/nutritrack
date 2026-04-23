@@ -271,8 +271,9 @@
       </div>
 
       <div class="modal-tabs" role="tablist">
-        <button type="button" class="modal-tab active" id="mtab-search" role="tab" aria-selected="true" onclick="switchModalTab('search')">🔍 База продуктов</button>
-        <button type="button" class="modal-tab" id="mtab-manual" role="tab" aria-selected="false" onclick="switchModalTab('manual')">✏️ Ручной ввод</button>
+        <button type="button" class="modal-tab active" id="mtab-search" role="tab" aria-selected="true" onclick="switchModalTab('search')">🔍 База</button>
+        <button type="button" class="modal-tab" id="mtab-scan" role="tab" aria-selected="false" onclick="switchModalTab('scan')">📷 Скан</button>
+        <button type="button" class="modal-tab" id="mtab-manual" role="tab" aria-selected="false" onclick="switchModalTab('manual')">✏️ Вручную</button>
       </div>
 
       <div class="modal-body">
@@ -325,6 +326,35 @@
           <button type="button" class="btn-primary" onclick="addFoodFromSearch()">+ Добавить в дневник</button>
         </div>
 
+        <!-- ═══ ШТРИХКОД ═══ -->
+        <div id="modal-scan-panel" role="tabpanel" hidden>
+          <div class="scan-panel-inner">
+
+            <div id="scan-status" class="scan-status">
+              Наведите камеру на штрихкод продукта
+            </div>
+
+            <div class="reader-container" id="reader-container">
+              <div id="reader"></div>
+              <div class="scan-overlay" aria-hidden="true">
+                <div class="scan-frame">
+                  <div class="scan-line"></div>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn-scan-start" id="scan-start-btn" onclick="startScanner()">
+              📷 Запустить камеру
+            </button>
+            <button type="button" class="btn-scan-stop" id="scan-stop-btn" onclick="stopScanner()">
+              ⏹ Остановить
+            </button>
+
+            <p class="scan-hint">EAN-8 · EAN-13 · UPC-A · CODE-128<br>База данных: Open Food Facts</p>
+
+          </div>
+        </div>
+
         <div id="modal-manual-panel" role="tabpanel" hidden>
           <div class="form-group">
             <label class="form-label" for="manual-name">Название продукта</label>
@@ -365,6 +395,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="foods-db.js"></script>
 <script src="app.js"></script>
 <script>

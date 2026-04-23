@@ -6,6 +6,7 @@ let modalTab = 'search';
 let profileGoal = 'maintain';
 let chartWeek = null;
 let chartPie = null;
+let qrScanner = null;
 
 /* ===== UTILS ===== */
 function todayStr() {
@@ -40,6 +41,8 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
 }
+
+function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
 
 /* ===== STORAGE ===== */
 function getDayLog(date) {
@@ -207,29 +210,31 @@ function openModal() {
 }
 
 function closeModal() {
+  stopScanner();
   const overlay = document.getElementById('modal-overlay');
   if (overlay) overlay.classList.remove('open');
 }
 
 function switchModalTab(tab) {
+  if (modalTab === 'scan' && tab !== 'scan') stopScanner();
   modalTab = tab;
+
   document.querySelectorAll('.modal-tab').forEach(t => {
     t.classList.remove('active');
     t.setAttribute('aria-selected', 'false');
   });
-  const activeTab = document.getElementById('mtab-' + tab);
-  activeTab.classList.add('active');
-  activeTab.setAttribute('aria-selected', 'true');
-
-  const search = document.getElementById('modal-search-panel');
-  const manual = document.getElementById('modal-manual-panel');
-  if (tab === 'search') {
-    search.removeAttribute('hidden');
-    manual.setAttribute('hidden', '');
-  } else {
-    manual.removeAttribute('hidden');
-    search.setAttribute('hidden', '');
+  const activeTabBtn = document.getElementById('mtab-' + tab);
+  if (activeTabBtn) {
+    activeTabBtn.classList.add('active');
+    activeTabBtn.setAttribute('aria-selected', 'true');
   }
+
+  ['modal-search-panel', 'modal-scan-panel', 'modal-manual-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('hidden', '');
+  });
+  const activePanel = document.getElementById('modal-' + tab + '-panel');
+  if (activePanel) activePanel.removeAttribute('hidden');
 }
 
 function handleSearch() {
@@ -331,8 +336,6 @@ function renderProfile() {
   const p = getProfile();
   profileGoal = p.goal || 'maintain';
 
-  // Fill form — guard each element
-  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
   setVal('prof-name',    p.name    || '');
   setVal('prof-age',     p.age     || '');
   setVal('prof-weight',  p.weight  || '');
@@ -690,6 +693,102 @@ function askNutritionist() {
 
   answerEl.textContent = '🤖 ' + found;
   answerEl.classList.add('show');
+}
+
+/* ===== BARCODE SCANNER ===== */
+function setScanStatus(msg, type) {
+  const el = document.getElementById('scan-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'scan-status' + (type ? ' ' + type : '');
+}
+
+function _getScanEls() {
+  return {
+    container: document.getElementById('reader-container'),
+    startBtn:  document.getElementById('scan-start-btn'),
+    stopBtn:   document.getElementById('scan-stop-btn'),
+  };
+}
+
+function startScanner() {
+  if (typeof Html5Qrcode === 'undefined') {
+    setScanStatus('Библиотека сканера не загружена. Проверьте интернет.', 'error');
+    return;
+  }
+  const { container, startBtn, stopBtn } = _getScanEls();
+  if (!qrScanner) qrScanner = new Html5Qrcode('reader');
+  if (container) container.classList.add('active');
+  if (startBtn)  startBtn.classList.add('hidden');
+  if (stopBtn)   stopBtn.classList.add('visible');
+  setScanStatus('Наведите камеру на штрихкод…', 'scanning');
+  qrScanner.start(
+    { facingMode: 'environment' },
+    {
+      fps: 10,
+      qrbox: { width: 260, height: 120 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+      ],
+    },
+    (barcode) => { stopScanner(); fetchProductByBarcode(barcode); },
+    () => {}
+  ).catch(() => {
+    setScanStatus('Нет доступа к камере. Разрешите доступ в настройках браузера.', 'error');
+    if (startBtn)  startBtn.classList.remove('hidden');
+    if (stopBtn)   stopBtn.classList.remove('visible');
+    if (container) container.classList.remove('active');
+  });
+}
+
+function stopScanner() {
+  const { container, startBtn, stopBtn } = _getScanEls();
+  if (qrScanner && qrScanner.getState() === Html5QrcodeScannerState.SCANNING) {
+    qrScanner.stop().then(() => { qrScanner.clear(); qrScanner = null; }).catch(() => {});
+  }
+  if (container) container.classList.remove('active');
+  if (startBtn)  startBtn.classList.remove('hidden');
+  if (stopBtn)   stopBtn.classList.remove('visible');
+}
+
+async function fetchProductByBarcode(barcode) {
+  setScanStatus('🔍 Штрихкод ' + barcode + ' — загружаю данные…', 'scanning');
+  try {
+    const resp = await fetch(
+      'https://world.openfoodfacts.org/api/v0/product/' + encodeURIComponent(barcode) + '.json'
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 1 || !data.product) {
+      setScanStatus('❌ Продукт не найден в базе. Введите данные вручную.', 'error');
+      switchModalTab('manual');
+      return;
+    }
+    const p = data.product;
+    const n = p.nutriments || {};
+    const name     = (p.product_name_ru || p.product_name || '').trim() || 'Продукт ' + barcode;
+    const proteins = round1(parseFloat(n['proteins_100g']      || n['protein_100g']     || 0));
+    const fats     = round1(parseFloat(n['fat_100g']           || n['total-fat_100g']   || 0));
+    const carbs    = round1(parseFloat(n['carbohydrates_100g'] || n['carbohydrate_100g']|| 0));
+    const kcal     = Math.round(parseFloat(n['energy-kcal_100g'] || 0) || parseFloat(n['energy_100g'] || 0) / 4.184);
+    switchModalTab('manual');
+    setScanStatus('✅ Найдено: ' + name, 'success');
+    setVal('manual-name',   name);
+    setVal('manual-p',      proteins);
+    setVal('manual-f',      fats);
+    setVal('manual-c',      carbs);
+    setVal('manual-k',      kcal || '');
+    const wEl = document.getElementById('manual-weight');
+    if (wEl) { wEl.value = ''; wEl.focus(); }
+    showToast('✓ ' + name + ' — введите вес порции');
+  } catch (err) {
+    setScanStatus('❌ Ошибка сети. Проверьте соединение или введите данные вручную.', 'error');
+  }
 }
 
 /* ===== INIT ===== */
