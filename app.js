@@ -825,6 +825,35 @@ async function fetchProductByBarcode(barcode) {
   }
 }
 
+/* ===== PWA ===== */
+let _installPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installPrompt = e;
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = false;
+});
+
+window.addEventListener('appinstalled', () => {
+  _installPrompt = null;
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = true;
+  showToast('📱 NutriTrack установлен!');
+});
+
+function installApp() {
+  if (!_installPrompt) return;
+  _installPrompt.prompt();
+  _installPrompt.userChoice.then(() => { _installPrompt = null; });
+}
+
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
   switchTab('diary');

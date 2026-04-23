@@ -1494,3 +1494,33 @@ textarea:focus-visible { outline: none; }
   min-width: 52px;
   text-align: center;
 }
+
+/* ===== PWA INSTALL BUTTON ===== */
+.btn-install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  margin-top: 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0,212,255,0.35);
+  background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(61,255,160,0.08));
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  color: var(--accent2);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 4px 20px rgba(0,212,255,0.12);
+}
+
+.btn-install:hover {
+  box-shadow: 0 4px 28px rgba(0,212,255,0.25);
+}
+
+.btn-install:active {
+  transform: scale(0.97);
+}

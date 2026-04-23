@@ -1,0 +1,27 @@
+{
+  "name": "NutriTrack · БЖУ",
+  "short_name": "NutriTrack",
+  "description": "Дневник питания с трекером БЖУ, калорий и воды",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#3DFFA0",
+  "background_color": "#07070F",
+  "lang": "ru",
+  "categories": ["health", "fitness"],
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
