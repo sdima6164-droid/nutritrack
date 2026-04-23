@@ -275,11 +275,54 @@
 
   </div>
 
+  <!-- ═══════════════ АНАЛИТИКА ═══════════════ -->
+  <div id="page-analytics" class="page">
+
+    <header class="page-header">
+      <div>
+        <div class="page-title">Аналитика</div>
+        <p class="page-sub">За последние 7 дней</p>
+      </div>
+    </header>
+
+    <div class="an-stats-grid">
+      <div class="an-stat">
+        <div class="an-val" id="an-avg">—</div>
+        <div class="an-label">ккал в среднем</div>
+      </div>
+      <div class="an-stat">
+        <div class="an-val" id="an-max">—</div>
+        <div class="an-label">максимум</div>
+      </div>
+      <div class="an-stat">
+        <div class="an-val" id="an-min">—</div>
+        <div class="an-label">минимум</div>
+      </div>
+    </div>
+
+    <p class="section-title">Калории по дням</p>
+    <div class="analytics-card">
+      <canvas id="calorieChart"></canvas>
+    </div>
+
+    <p class="section-title">БЖУ по дням (г)</p>
+    <div class="analytics-card">
+      <canvas id="macroChart"></canvas>
+    </div>
+
+    <div class="spacer-sm"></div>
+
+  </div>
+
   <!-- ═══════════════ НАВИГАЦИЯ ═══════════════ -->
   <nav class="bottom-nav" aria-label="Основная навигация">
     <button type="button" class="nav-btn active" id="nav-diary" onclick="switchTab('diary')" aria-current="page">
       <span class="icon" aria-hidden="true">📋</span>
       <span>Дневник</span>
+    </button>
+    <button type="button" class="nav-btn" id="nav-analytics" onclick="switchTab('analytics')">
+      <span class="icon" aria-hidden="true">📊</span>
+      <span>Аналитика</span>
     </button>
     <button type="button" class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
       <span class="icon" aria-hidden="true">👤</span>

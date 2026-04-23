@@ -1561,3 +1561,51 @@ textarea:focus-visible { outline: none; }
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* ===== ANALYTICS PAGE ===== */
+.an-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 0 20px;
+  margin-top: 14px;
+}
+
+.an-stat {
+  padding: 14px 10px;
+  text-align: center;
+  background: var(--card);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+
+.an-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--kcal);
+  line-height: 1.2;
+}
+
+.an-label {
+  font-size: 10px;
+  color: var(--text2);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.analytics-card {
+  margin: 8px 20px 0;
+  padding: 16px;
+  background: var(--card);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+  height: 220px;
+}

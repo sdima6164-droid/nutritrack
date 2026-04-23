@@ -6,6 +6,8 @@ let modalTab = 'search';
 let profileGoal = 'maintain';
 let chartWeek = null;
 let chartPie = null;
+let chartCalorie = null;
+let chartMacro = null;
 let qrScanner = null;
 
 /* ===== UTILS ===== */
@@ -136,6 +138,7 @@ function switchTab(tab) {
   if (tab === 'diary') renderDiary();
   if (tab === 'profile') renderProfile();
   if (tab === 'nutri') renderNutri();
+  if (tab === 'analytics') renderAnalytics();
 }
 
 /* ===== DIARY PAGE ===== */
@@ -827,6 +830,175 @@ async function fetchProductByBarcode(barcode) {
     alert('Ошибка: Продукт не найден в базе или нет сети');
     setScanStatus('❌ Ошибка сети. Проверьте соединение или введите данные вручную.', 'error');
   }
+}
+
+/* ===== ANALYTICS PAGE ===== */
+function ensureAnalyticsData() {
+  const pastDates = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr(), -(i + 1)));
+  if (pastDates.some(d => getDayLog(d).length > 0)) return;
+
+  const mockDays = [
+    [
+      { name: 'Овсянка', weight: 300, proteins: 10, fats: 5, carbs: 45, calories: 264 },
+      { name: 'Куриная грудка', weight: 200, proteins: 47, fats: 4, carbs: 1, calories: 220 },
+      { name: 'Гречка варёная', weight: 250, proteins: 11, fats: 3, carbs: 63, calories: 330 },
+      { name: 'Творог 5%', weight: 200, proteins: 34, fats: 10, carbs: 4, calories: 242 },
+    ],
+    [
+      { name: 'Яйца куриные', weight: 150, proteins: 19, fats: 16, carbs: 1, calories: 236 },
+      { name: 'Рис белый', weight: 200, proteins: 5, fats: 1, carbs: 56, calories: 260 },
+      { name: 'Лосось', weight: 180, proteins: 36, fats: 23, carbs: 0, calories: 374 },
+      { name: 'Греческий йогурт', weight: 250, proteins: 25, fats: 1, carbs: 10, calories: 148 },
+    ],
+    [
+      { name: 'Овсянка', weight: 280, proteins: 9, fats: 5, carbs: 42, calories: 246 },
+      { name: 'Тунец консервированный', weight: 185, proteins: 44, fats: 2, carbs: 0, calories: 194 },
+      { name: 'Картофель варёный', weight: 300, proteins: 6, fats: 1, carbs: 54, calories: 243 },
+      { name: 'Куриная грудка', weight: 150, proteins: 35, fats: 3, carbs: 1, calories: 165 },
+      { name: 'Банан', weight: 150, proteins: 2, fats: 0, carbs: 35, calories: 134 },
+    ],
+    [
+      { name: 'Творог 5%', weight: 250, proteins: 43, fats: 13, carbs: 5, calories: 303 },
+      { name: 'Гречка варёная', weight: 300, proteins: 14, fats: 3, carbs: 75, calories: 396 },
+      { name: 'Куриная грудка', weight: 200, proteins: 47, fats: 4, carbs: 1, calories: 220 },
+      { name: 'Яблоко', weight: 180, proteins: 1, fats: 0, carbs: 19, calories: 86 },
+    ],
+    [
+      { name: 'Яйца куриные', weight: 120, proteins: 15, fats: 13, carbs: 1, calories: 188 },
+      { name: 'Рис белый', weight: 250, proteins: 7, fats: 1, carbs: 70, calories: 325 },
+      { name: 'Лосось', weight: 200, proteins: 40, fats: 26, carbs: 0, calories: 416 },
+      { name: 'Брокколи', weight: 200, proteins: 6, fats: 1, carbs: 14, calories: 68 },
+      { name: 'Банан', weight: 120, proteins: 1, fats: 0, carbs: 28, calories: 107 },
+    ],
+    [
+      { name: 'Овсянка', weight: 320, proteins: 10, fats: 6, carbs: 48, calories: 282 },
+      { name: 'Куриная грудка', weight: 180, proteins: 42, fats: 3, carbs: 1, calories: 198 },
+      { name: 'Картофель варёный', weight: 250, proteins: 5, fats: 1, carbs: 45, calories: 203 },
+      { name: 'Творог 5%', weight: 200, proteins: 34, fats: 10, carbs: 4, calories: 242 },
+      { name: 'Яблоко', weight: 150, proteins: 1, fats: 0, carbs: 16, calories: 72 },
+    ],
+    [
+      { name: 'Яйца куриные', weight: 180, proteins: 23, fats: 20, carbs: 1, calories: 283 },
+      { name: 'Гречка варёная', weight: 300, proteins: 14, fats: 3, carbs: 75, calories: 396 },
+      { name: 'Куриная грудка', weight: 200, proteins: 47, fats: 4, carbs: 1, calories: 220 },
+      { name: 'Греческий йогурт', weight: 200, proteins: 20, fats: 1, carbs: 8, calories: 118 },
+    ],
+  ];
+
+  pastDates.forEach((date, i) => setDayLog(date, mockDays[i] || mockDays[0]));
+}
+
+function renderAnalytics() {
+  ensureAnalyticsData();
+
+  const labels = [], kcalData = [], protData = [], fatData = [], carbData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = shiftDate(todayStr(), -i);
+    const [, m, day] = d.split('-');
+    labels.push(day + '.' + m);
+    const t = sumLog(getDayLog(d));
+    kcalData.push(t.calories);
+    protData.push(t.proteins);
+    fatData.push(t.fats);
+    carbData.push(t.carbs);
+  }
+
+  const filled = kcalData.filter(v => v > 0);
+  const avg = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : 0;
+  const max = filled.length ? Math.max(...filled) : 0;
+  const min = filled.length ? Math.min(...filled) : 0;
+
+  const avgEl = document.getElementById('an-avg'); if (avgEl) avgEl.textContent = avg || '—';
+  const maxEl = document.getElementById('an-max'); if (maxEl) maxEl.textContent = max || '—';
+  const minEl = document.getElementById('an-min'); if (minEl) minEl.textContent = min || '—';
+
+  _renderCalorieChart(labels, kcalData, getTargets().calories);
+  _renderMacroChart(labels, protData, fatData, carbData);
+}
+
+function _chartOptions(unit) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#8080A8', font: { size: 11 }, boxWidth: 12, padding: 14 },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(12,12,26,0.92)',
+        borderColor: 'rgba(255,255,255,0.10)',
+        borderWidth: 1,
+        titleColor: '#EEEEFF',
+        bodyColor: '#8080A8',
+        padding: 10,
+        callbacks: { label: ctx => ' ' + ctx.parsed.y + ' ' + unit },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: '#8080A8', font: { size: 11 } },
+        border: { display: false },
+      },
+      y: {
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#8080A8', font: { size: 10 } },
+        border: { display: false },
+      },
+    },
+  };
+}
+
+function _renderCalorieChart(labels, data, goalKcal) {
+  const canvas = document.getElementById('calorieChart');
+  if (!canvas) return;
+  if (chartCalorie) { chartCalorie.destroy(); chartCalorie = null; }
+  chartCalorie = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Калории',
+          data,
+          backgroundColor: 'rgba(192,122,255,0.22)',
+          borderColor: 'rgba(192,122,255,0.9)',
+          borderWidth: 2,
+          borderRadius: 10,
+          borderSkipped: false,
+        },
+        {
+          type: 'line',
+          label: 'Цель',
+          data: Array(labels.length).fill(goalKcal),
+          borderColor: 'rgba(61,255,160,0.55)',
+          borderWidth: 1.5,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: _chartOptions('ккал'),
+  });
+}
+
+function _renderMacroChart(labels, prot, fat, carb) {
+  const canvas = document.getElementById('macroChart');
+  if (!canvas) return;
+  if (chartMacro) { chartMacro.destroy(); chartMacro = null; }
+  chartMacro = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Белки', data: prot, backgroundColor: 'rgba(61,255,160,0.22)', borderColor: 'rgba(61,255,160,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+        { label: 'Жиры',  data: fat,  backgroundColor: 'rgba(255,155,92,0.22)',  borderColor: 'rgba(255,155,92,0.85)',  borderWidth: 2, borderRadius: 6, borderSkipped: false },
+        { label: 'Углеводы', data: carb, backgroundColor: 'rgba(69,207,255,0.22)', borderColor: 'rgba(69,207,255,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+      ],
+    },
+    options: _chartOptions('г'),
+  });
 }
 
 /* ===== STREAKS & GAMIFICATION ===== */
