@@ -35,6 +35,7 @@ function round1(v) { return Math.round(v * 10) / 10; }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
@@ -102,27 +103,30 @@ function switchTab(tab) {
 
 /* ===== DIARY PAGE ===== */
 function renderDiary() {
-  // Date display
-  document.getElementById('date-display').textContent = formatDate(currentDate);
+  const dateEl = document.getElementById('date-display');
+  if (dateEl) dateEl.textContent = formatDate(currentDate);
 
-  const entries = getDayLog(currentDate);
+  let entries = [];
+  try { entries = getDayLog(currentDate); } catch(e) { entries = []; }
   const totals = sumLog(entries);
   const targets = getTargets();
 
-  // Rings
+  // Rings — each guarded inside renderRing
   renderRing('ring-p', 'protein', totals.proteins, targets.proteins, 'Б');
-  renderRing('ring-f', 'fat', totals.fats, targets.fats, 'Ж');
-  renderRing('ring-c', 'carb', totals.carbs, targets.carbs, 'У');
-  renderRing('ring-k', 'kcal', totals.calories, targets.calories, 'ккал');
+  renderRing('ring-f', 'fat',     totals.fats,     targets.fats,     'Ж');
+  renderRing('ring-c', 'carb',    totals.carbs,     targets.carbs,    'У');
+  renderRing('ring-k', 'kcal',    totals.calories,  targets.calories, 'ккал');
 
   // Totals card
-  document.getElementById('total-p').textContent = totals.proteins + 'г';
-  document.getElementById('total-f').textContent = totals.fats + 'г';
-  document.getElementById('total-c').textContent = totals.carbs + 'г';
-  document.getElementById('total-k').textContent = totals.calories;
+  const tp = document.getElementById('total-p'); if (tp) tp.textContent = totals.proteins + 'г';
+  const tf = document.getElementById('total-f'); if (tf) tf.textContent = totals.fats + 'г';
+  const tc = document.getElementById('total-c'); if (tc) tc.textContent = totals.carbs + 'г';
+  const tk = document.getElementById('total-k'); if (tk) tk.textContent = totals.calories;
 
   // Food list
   const listEl = document.getElementById('food-list');
+  if (!listEl) return;
+
   if (entries.length === 0) {
     listEl.innerHTML = `
       <div class="empty-state">
@@ -130,35 +134,52 @@ function renderDiary() {
         <p>Нет записей за этот день.<br>Нажмите «+ Добавить продукт»</p>
       </div>`;
   } else {
-    listEl.innerHTML = entries.map((e, i) => `
+    listEl.innerHTML = entries.map((e, i) => {
+      const name     = e.name     || 'Без названия';
+      const weight   = e.weight   != null ? e.weight   : '?';
+      const proteins = e.proteins != null ? e.proteins : 0;
+      const fats     = e.fats     != null ? e.fats     : 0;
+      const carbs    = e.carbs    != null ? e.carbs    : 0;
+      const calories = e.calories != null ? e.calories : 0;
+      return `
       <div class="food-entry">
         <div class="food-entry-info">
-          <div class="food-entry-name">${e.name}</div>
-          <div class="food-entry-weight">${e.weight} г</div>
+          <div class="food-entry-name">${name}</div>
+          <div class="food-entry-weight">${weight} г</div>
           <div class="food-entry-macros">
-            <span class="macro-pill p">Б ${e.proteins}г</span>
-            <span class="macro-pill f">Ж ${e.fats}г</span>
-            <span class="macro-pill c">У ${e.carbs}г</span>
-            <span class="macro-pill k">${e.calories} ккал</span>
+            <span class="macro-pill p">Б ${proteins}г</span>
+            <span class="macro-pill f">Ж ${fats}г</span>
+            <span class="macro-pill c">У ${carbs}г</span>
+            <span class="macro-pill k">${calories} ккал</span>
           </div>
         </div>
         <button class="food-entry-delete" onclick="deleteEntry(${i})" aria-label="Удалить">✕</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 }
 
 function renderRing(id, type, val, target, label) {
-  const el = document.getElementById(id);       // это .ring-wrap
-  const card = el.closest('.ring-card');         // поднимаемся к карточке
+  const el = document.getElementById(id);
+  if (!el) return;
+  const card = el.closest('.ring-card');
   const pct = target > 0 ? Math.min(Math.round((val / target) * 100), 100) : 0;
-  const r = 30;
-  const circ = 2 * Math.PI * r;
+  const circ = 2 * Math.PI * 30;
   const offset = circ - (pct / 100) * circ;
+
   const fill = el.querySelector('.ring-fill');
-  fill.style.strokeDasharray = circ;
-  fill.style.strokeDashoffset = offset;
-  el.querySelector('.ring-pct').textContent = pct + '%';
-  card.querySelector('.ring-val').textContent = round1(val) + (label === 'ккал' ? '' : 'г');
+  if (fill) {
+    fill.style.strokeDasharray = String(circ);
+    fill.style.strokeDashoffset = String(offset);
+  }
+
+  const pctSpan = el.querySelector('.ring-pct');
+  if (pctSpan) pctSpan.textContent = pct + '%';
+
+  if (card) {
+    const valEl = card.querySelector('.ring-val');
+    if (valEl) valEl.textContent = round1(val) + (label === 'ккал' ? '' : 'г');
+  }
 }
 
 function deleteEntry(index) {
@@ -172,17 +193,22 @@ function deleteEntry(index) {
 /* ===== MODAL ===== */
 function openModal() {
   selectedFood = null;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.getElementById('search-input').value = '';
-  document.getElementById('weight-input').value = '100';
-  document.getElementById('food-results').innerHTML = '';
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) overlay.classList.add('open');
+  const si = document.getElementById('search-input');
+  if (si) { si.value = ''; }
+  const wi = document.getElementById('weight-input');
+  if (wi) wi.value = '100';
+  const fr = document.getElementById('food-results');
+  if (fr) fr.innerHTML = '';
   updatePreview();
   switchModalTab('search');
-  document.getElementById('search-input').focus();
+  if (si) si.focus();
 }
 
 function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) overlay.classList.remove('open');
 }
 
 function switchModalTab(tab) {
@@ -305,15 +331,16 @@ function renderProfile() {
   const p = getProfile();
   profileGoal = p.goal || 'maintain';
 
-  // Fill form
-  document.getElementById('prof-name').value = p.name || '';
-  document.getElementById('prof-age').value = p.age || '';
-  document.getElementById('prof-weight').value = p.weight || '';
-  document.getElementById('prof-height').value = p.height || '';
-  document.getElementById('prof-targetP').value = p.targetP || 150;
-  document.getElementById('prof-targetF').value = p.targetF || 65;
-  document.getElementById('prof-targetC').value = p.targetC || 200;
-  document.getElementById('prof-targetK').value = p.targetK || 2000;
+  // Fill form — guard each element
+  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
+  setVal('prof-name',    p.name    || '');
+  setVal('prof-age',     p.age     || '');
+  setVal('prof-weight',  p.weight  || '');
+  setVal('prof-height',  p.height  || '');
+  setVal('prof-targetP', p.targetP || 150);
+  setVal('prof-targetF', p.targetF || 65);
+  setVal('prof-targetC', p.targetC || 200);
+  setVal('prof-targetK', p.targetK || 2000);
 
   // Goal buttons
   document.querySelectorAll('.goal-opt').forEach(b => {
@@ -322,12 +349,12 @@ function renderProfile() {
 
   // Stats
   const streak = calcStreak();
-  document.getElementById('streak-val').textContent = streak;
-  document.getElementById('streak-label').textContent = streak === 1 ? 'день подряд' : (streak < 5 ? 'дня подряд' : 'дней подряд');
+  const sv = document.getElementById('streak-val');   if (sv) sv.textContent = streak;
+  const sl = document.getElementById('streak-label'); if (sl) sl.textContent = streak === 1 ? 'день подряд' : (streak < 5 ? 'дня подряд' : 'дней подряд');
 
   const days = countLoggedDays();
-  document.getElementById('stat-days').textContent = days;
-  document.getElementById('stat-avgkcal').textContent = calcAvgKcal();
+  const sd = document.getElementById('stat-days');    if (sd) sd.textContent = days;
+  const sa = document.getElementById('stat-avgkcal'); if (sa) sa.textContent = calcAvgKcal();
 
   renderWeekChart();
 }
