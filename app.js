@@ -736,7 +736,7 @@ function startScanner() {
         Html5QrcodeSupportedFormats.CODE_39,
       ],
     },
-    (barcode) => { stopScanner(); fetchProductByBarcode(barcode); },
+    (barcode) => { alert('Штрихкод прочитан: ' + barcode); stopScanner(); fetchProductByBarcode(barcode); },
     () => {}
   ).catch(() => {
     setScanStatus('Нет доступа к камере. Разрешите доступ в настройках браузера.', 'error');
@@ -765,6 +765,7 @@ async function fetchProductByBarcode(barcode) {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.status !== 1 || !data.product) {
+      alert('Ошибка: Продукт не найден в базе или нет сети');
       setScanStatus('❌ Продукт не найден в базе. Введите данные вручную.', 'error');
       switchModalTab('manual');
       return;
@@ -787,6 +788,7 @@ async function fetchProductByBarcode(barcode) {
     if (wEl) { wEl.value = ''; wEl.focus(); }
     showToast('✓ ' + name + ' — введите вес порции');
   } catch (err) {
+    alert('Ошибка: Продукт не найден в базе или нет сети');
     setScanStatus('❌ Ошибка сети. Проверьте соединение или введите данные вручную.', 'error');
   }
 }
