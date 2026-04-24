@@ -1464,40 +1464,29 @@ async function renderSocial() {
   if (session?.user) await loadSocialData(session.user);
 }
 
-async function sendFriendRequest(emailArg) {
-  if (!sbClient) { showToast('Нет подключения'); return; }
-  const { data: { session } } = await sbClient.auth.getSession();
-  if (!session?.user) { showToast('Войдите в аккаунт'); return; }
+async function sendFriendRequest(targetEmail) {
+  if (!targetEmail) return alert('Введите email');
+  try {
+    const session = await sbClient.auth.getSession();
+    const currentUser = session.data.session?.user;
+    if (!currentUser) return alert('Ошибка авторизации');
+    if (targetEmail.toLowerCase() === currentUser.email.toLowerCase()) return alert('Нельзя добавить себя');
 
-  const email = (emailArg || document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
-  if (!email) { showToast('Введите email друга'); return; }
-  if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
+    const { data: profiles, error: searchError } = await sbClient.from('profiles').select('*').ilike('email', targetEmail.trim());
+    if (searchError) throw searchError;
+    if (!profiles || profiles.length === 0) return alert('❌ Пользователь не найден в базе');
 
-  const { data, error } = await sbClient.from('profiles').select('*').ilike('email', email.trim());
-  if (error) { alert(error.message); return; }
-  if (!data || data.length === 0) { alert('❌ Пользователь не найден'); return; }
+    const targetId = profiles[0].id;
+    const { error: insertError } = await sbClient.from('friendships').insert([{ sender_id: currentUser.id, receiver_id: targetId, status: 'pending' }]);
 
-  const { data: existing } = await sbClient
-    .from('friendships')
-    .select('id,status')
-    .or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${data[0].id}),and(sender_id.eq.${data[0].id},receiver_id.eq.${session.user.id})`)
-    .maybeSingle();
-
-  if (existing) {
-    showToast(existing.status === 'accepted' ? '✅ Уже в друзьях' : '⏳ Заявка уже отправлена');
-    return;
+    if (insertError) {
+      if (insertError.code === '23505') return alert('Заявка уже отправлена!');
+      throw insertError;
+    }
+    alert('✅ Заявка успешно отправлена!');
+  } catch (err) {
+    alert('Ошибка БД: ' + err.message);
   }
-
-  const { error: insertErr } = await sbClient.from('friendships').insert({
-    sender_id: session.user.id,
-    receiver_id: data[0].id,
-    status: 'pending',
-  });
-
-  if (insertErr) { alert('❌ ' + insertErr.message); return; }
-  const inp = document.getElementById('friend-email-input');
-  if (inp) inp.value = '';
-  alert('✅ Заявка отправлена!');
 }
 
 async function acceptFriendRequest(requestId) {
