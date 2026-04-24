@@ -1435,37 +1435,38 @@ function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function updateSocialUI(session) {
+  const ar = document.getElementById('social-auth-required');
+  const sc = document.getElementById('social-content');
+  if (!ar || !sc) return;
+  if (session?.user) {
+    ar.style.display = 'none';
+    sc.style.display = 'block';
+  } else {
+    ar.style.display = 'flex';
+    sc.style.display = 'none';
+  }
+}
+
 async function renderSocial() {
-  showSocialLocked();
+  updateSocialUI(null);
   if (!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
-  if (!session?.user) return;
-  const ar = document.getElementById('social-auth-required');
-  const sc = document.getElementById('social-content');
-  if (ar) ar.style.display = 'none';
-  if (sc) sc.style.display = 'flex';
-  await loadSocialData(session.user);
+  updateSocialUI(session);
+  if (session?.user) await loadSocialData(session.user);
 }
 
-function showSocialLocked() {
-  const ar = document.getElementById('social-auth-required');
-  const sc = document.getElementById('social-content');
-  if (ar) ar.style.display = 'flex';
-  if (sc) sc.style.display = 'none';
-}
-
-async function sendFriendRequest(email) {
+async function sendFriendRequest() {
   if (!sbClient) { showToast('Нет подключения'); return; }
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) { showToast('Войдите в аккаунт'); return; }
 
-  if (!email) email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
+  const email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
   if (!email) { showToast('Введите email друга'); return; }
   if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
-  const { data, error: searchError } = await sbClient.from('profiles').select('*').ilike('email', email.trim());
-
-  if (searchError) { alert(searchError.message); return; }
+  const { data, error } = await sbClient.from('profiles').select('*').ilike('email', email.trim());
+  if (error) { alert(error.message); return; }
   if (!data || data.length === 0) { alert('❌ Пользователь не найден'); return; }
 
   const { data: existing } = await sbClient
@@ -1479,13 +1480,13 @@ async function sendFriendRequest(email) {
     return;
   }
 
-  const { error } = await sbClient.from('friendships').insert({
+  const { error: insertErr } = await sbClient.from('friendships').insert({
     sender_id: session.user.id,
     receiver_id: data[0].id,
     status: 'pending',
   });
 
-  if (error) { alert('❌ ' + error.message); return; }
+  if (insertErr) { alert('❌ ' + insertErr.message); return; }
   const inp = document.getElementById('friend-email-input');
   if (inp) inp.value = '';
   alert('✅ Заявка отправлена!');
