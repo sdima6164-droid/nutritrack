@@ -1097,8 +1097,27 @@ function installApp() {
   _installPrompt.userChoice.then(() => { _installPrompt = null; });
 }
 
+/* ===== THEME ===== */
+function applyTheme(theme) {
+  document.documentElement.classList.toggle('dark-theme', theme === 'dark');
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#03030A' : '#EEF1FA');
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  const next = isDark ? 'light' : 'dark';
+  localStorage.setItem('bju_theme', next);
+  applyTheme(next);
+}
+
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('bju_theme');
+  applyTheme(saved === 'light' ? 'light' : 'dark');
+
   const { count, increased } = updateStreak();
   const badgeEl = document.getElementById('streak-badge-val');
   if (badgeEl) badgeEl.textContent = count;

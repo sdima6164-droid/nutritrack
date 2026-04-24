@@ -10,10 +10,19 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.svg">
   <link rel="stylesheet" href="style.css">
+  <script>
+    if (localStorage.getItem('bju_theme') !== 'light') {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
 </head>
 <body>
 
 <div id="app">
+
+  <button type="button" class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Переключить тему">
+    <span id="theme-icon">🌙</span>
+  </button>
 
   <div class="bg-orbs" aria-hidden="true">
     <div class="orb orb1"></div>
