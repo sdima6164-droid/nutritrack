@@ -1752,3 +1752,41 @@ html.dark-theme .modal-close:hover { background: rgba(255,255,255,0.12); }
 
 .theme-toggle:hover  { transform: scale(1.10); }
 .theme-toggle:active { transform: scale(0.92); }
+
+/* ===== SYNC INDICATOR ===== */
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  background: rgba(61,255,160,0.10);
+  border: 1px solid rgba(61,255,160,0.22);
+  border-radius: 20px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  transition: opacity 0.3s;
+}
+
+.sync-pill.syncing {
+  animation: syncPulse 1.2s ease-in-out infinite;
+}
+
+.sync-pill.error {
+  background: rgba(220,38,38,0.10);
+  border-color: rgba(220,38,38,0.25);
+  color: var(--danger);
+}
+
+@keyframes syncPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

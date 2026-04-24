@@ -24,6 +24,7 @@ async function signIn(email, password) {
   localStorage.setItem('sb_session', JSON.stringify(data.session));
   updateAuthUI(data.user);
   showAuthSuccess(data.user.email);
+  await loadFromCloud();
   return data;
 }
 
@@ -80,7 +81,76 @@ async function restoreSession() {
   if (session?.user) {
     localStorage.setItem('sb_session', JSON.stringify(session));
     updateAuthUI(session.user);
+    await loadFromCloud();
   }
+}
+
+/* ===== CLOUD SYNC ===== */
+function setSyncIndicator(state) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  if (state === 'hidden') {
+    el.hidden = true;
+    el.className = 'sync-pill';
+    return;
+  }
+  el.hidden = false;
+  if (state === 'syncing') {
+    el.className = 'sync-pill syncing';
+    el.textContent = '☁️ Синхронизация...';
+  } else if (state === 'done') {
+    el.className = 'sync-pill';
+    el.textContent = '✅ Сохранено';
+  } else if (state === 'error') {
+    el.className = 'sync-pill error';
+    el.textContent = '❌ Ошибка синхронизации';
+  }
+}
+
+async function syncToCloud() {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+
+  setSyncIndicator('syncing');
+  const state = {
+    entries: getDayLog(currentDate),
+    water: getWater(currentDate),
+  };
+  const { error } = await sbClient
+    .from('user_data')
+    .upsert(
+      { user_id: session.user.id, date: currentDate, state },
+      { onConflict: 'user_id,date' }
+    );
+  if (error) {
+    console.error('Cloud sync error:', error);
+    setSyncIndicator('error');
+    setTimeout(() => setSyncIndicator('hidden'), 2500);
+  } else {
+    setSyncIndicator('done');
+    setTimeout(() => setSyncIndicator('hidden'), 1500);
+  }
+}
+
+async function loadFromCloud() {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+
+  const { data, error } = await sbClient
+    .from('user_data')
+    .select('state')
+    .eq('user_id', session.user.id)
+    .eq('date', currentDate)
+    .single();
+  if (error || !data?.state) return;
+
+  const { entries, water } = data.state;
+  if (Array.isArray(entries)) setDayLog(currentDate, entries);
+  if (typeof water === 'number') setWater(currentDate, water);
+  renderDiary();
+  showToast('☁️ Данные загружены из облака');
 }
 
 /* ===== STATE ===== */
@@ -190,6 +260,7 @@ function changeWater(delta) {
     showToast('💧 Цель по воде достигнута!');
     if (prev < WATER_GOAL) launchConfetti();
   }
+  syncToCloud();
 }
 
 /* ===== MACRO CALCULATIONS ===== */
@@ -316,6 +387,7 @@ function deleteEntry(index) {
   setDayLog(currentDate, entries);
   renderDiary();
   showToast('Запись удалена');
+  syncToCloud();
 }
 
 /* ===== MODAL ===== */
@@ -432,6 +504,7 @@ function addFoodFromSearch() {
   closeModal();
   renderDiary();
   showToast('✓ ' + selectedFood.name + ' добавлен');
+  syncToCloud();
 }
 
 function addFoodManual() {
@@ -454,6 +527,7 @@ function addFoodManual() {
   closeModal();
   renderDiary();
   showToast('✓ ' + name + ' добавлен');
+  syncToCloud();
 }
 
 /* ===== PROFILE PAGE ===== */
