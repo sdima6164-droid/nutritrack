@@ -1440,16 +1440,18 @@ async function renderSocial() {
   if (!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) return;
-  document.getElementById('social-auth-required').hidden = true;
-  document.getElementById('social-content').hidden = false;
+  const ar = document.getElementById('social-auth-required');
+  const sc = document.getElementById('social-content');
+  if (ar) ar.style.display = 'none';
+  if (sc) sc.style.display = 'flex';
   await loadSocialData(session.user);
 }
 
 function showSocialLocked() {
   const ar = document.getElementById('social-auth-required');
   const sc = document.getElementById('social-content');
-  if (ar) ar.hidden = false;
-  if (sc) sc.hidden = true;
+  if (ar) ar.style.display = 'flex';
+  if (sc) sc.style.display = 'none';
 }
 
 async function sendFriendRequest() {
