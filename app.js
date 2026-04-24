@@ -1454,27 +1454,24 @@ function showSocialLocked() {
   if (sc) sc.style.display = 'none';
 }
 
-async function sendFriendRequest() {
+async function sendFriendRequest(email) {
   if (!sbClient) { showToast('Нет подключения'); return; }
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) { showToast('Войдите в аккаунт'); return; }
 
-  const email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
+  if (!email) email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
   if (!email) { showToast('Введите email друга'); return; }
   if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
-  console.log('Search attempt:', email.trim());
   const { data, error: searchError } = await sbClient.from('profiles').select('*').ilike('email', email.trim());
-  console.log('Supabase response:', data, searchError);
 
   if (searchError) { alert(searchError.message); return; }
-  if (!data || data.length === 0) { alert('❌ Пользователь не найден в таблице profiles'); return; }
-  const targetUser = { user_id: data[0].id };
+  if (!data || data.length === 0) { alert('❌ Пользователь не найден'); return; }
 
   const { data: existing } = await sbClient
     .from('friendships')
     .select('id,status')
-    .or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${targetUser.user_id}),and(sender_id.eq.${targetUser.user_id},receiver_id.eq.${session.user.id})`)
+    .or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${data[0].id}),and(sender_id.eq.${data[0].id},receiver_id.eq.${session.user.id})`)
     .maybeSingle();
 
   if (existing) {
@@ -1484,14 +1481,14 @@ async function sendFriendRequest() {
 
   const { error } = await sbClient.from('friendships').insert({
     sender_id: session.user.id,
-    receiver_id: targetUser.user_id,
+    receiver_id: data[0].id,
     status: 'pending',
   });
 
-  if (error) { showToast('❌ ' + error.message); return; }
+  if (error) { alert('❌ ' + error.message); return; }
   const inp = document.getElementById('friend-email-input');
   if (inp) inp.value = '';
-  showToast('✅ Заявка отправлена!');
+  alert('✅ Заявка отправлена!');
 }
 
 async function acceptFriendRequest(requestId) {
