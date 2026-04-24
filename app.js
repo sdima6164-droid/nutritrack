@@ -1460,10 +1460,18 @@ async function sendFriendRequest() {
   if (!email) { showToast('Введите email друга'); return; }
   if (email === session.user.email.toLowerCase()) { showToast('Нельзя добавить себя'); return; }
 
+  const { data: targetUser } = await sbClient
+    .from('user_profiles')
+    .select('user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (!targetUser) { showToast('❌ Пользователь не найден'); return; }
+
   const { data: existing } = await sbClient
-    .from('friend_requests')
+    .from('friendships')
     .select('id,status')
-    .or(`and(from_user_id.eq.${session.user.id},to_email.eq.${email}),and(to_email.eq.${session.user.email},from_email.eq.${email})`)
+    .or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${targetUser.user_id}),and(sender_id.eq.${targetUser.user_id},receiver_id.eq.${session.user.id})`)
     .maybeSingle();
 
   if (existing) {
@@ -1471,12 +1479,9 @@ async function sendFriendRequest() {
     return;
   }
 
-  const profile = getProfile();
-  const { error } = await sbClient.from('friend_requests').insert({
-    from_user_id: session.user.id,
-    from_email: session.user.email,
-    from_name: profile.name || session.user.email,
-    to_email: email,
+  const { error } = await sbClient.from('friendships').insert({
+    sender_id: session.user.id,
+    receiver_id: targetUser.user_id,
     status: 'pending',
   });
 
@@ -1491,8 +1496,8 @@ async function acceptFriendRequest(requestId) {
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) return;
   const { error } = await sbClient
-    .from('friend_requests')
-    .update({ status: 'accepted', to_user_id: session.user.id })
+    .from('friendships')
+    .update({ status: 'accepted' })
     .eq('id', requestId);
   if (error) { showToast('❌ Ошибка'); return; }
   showToast('✅ Заявка принята!');
@@ -1503,7 +1508,7 @@ async function declineFriendRequest(requestId) {
   if (!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) return;
-  await sbClient.from('friend_requests').update({ status: 'declined' }).eq('id', requestId);
+  await sbClient.from('friendships').update({ status: 'declined' }).eq('id', requestId);
   showToast('Заявка отклонена');
   await loadSocialData(session.user);
 }
@@ -1515,36 +1520,48 @@ async function loadSocialData(user) {
   if (friendsEl) friendsEl.innerHTML = '<div class="social-loading">⏳</div>';
 
   const { data: incoming } = await sbClient
-    .from('friend_requests')
+    .from('friendships')
     .select('*')
-    .eq('to_email', user.email)
+    .eq('receiver_id', user.id)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
+
+  const senderIds = (incoming || []).map(r => r.sender_id);
+  const { data: senderProfiles } = senderIds.length > 0
+    ? await sbClient.from('user_profiles').select('user_id,name,email').in('user_id', senderIds)
+    : { data: [] };
+  const senderMap = {};
+  (senderProfiles || []).forEach(p => { senderMap[p.user_id] = p; });
 
   if (requestsEl) {
     if (!incoming || incoming.length === 0) {
       requestsEl.innerHTML = '<div class="social-empty">Нет входящих заявок</div>';
     } else {
-      requestsEl.innerHTML = incoming.map(r => `
+      requestsEl.innerHTML = incoming.map(r => {
+        const sender = senderMap[r.sender_id] || {};
+        const displayName = sender.name || sender.email || r.sender_id;
+        const displayEmail = sender.email || '';
+        return `
         <div class="social-req-card">
-          <div class="src-avatar">${escapeHtml((r.from_name || r.from_email).charAt(0).toUpperCase())}</div>
+          <div class="src-avatar">${escapeHtml(displayName.charAt(0).toUpperCase())}</div>
           <div class="src-info">
-            <div class="src-name">${escapeHtml(r.from_name || r.from_email)}</div>
-            <div class="src-email">${escapeHtml(r.from_email)}</div>
+            <div class="src-name">${escapeHtml(displayName)}</div>
+            <div class="src-email">${escapeHtml(displayEmail)}</div>
           </div>
           <div class="src-btns">
             <button class="src-btn src-accept" onclick="acceptFriendRequest(${r.id})">✅</button>
             <button class="src-btn src-decline" onclick="declineFriendRequest(${r.id})">✕</button>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
   }
 
   const { data: accepted } = await sbClient
-    .from('friend_requests')
+    .from('friendships')
     .select('*')
     .eq('status', 'accepted')
-    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`);
+    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
   if (!friendsEl) return;
   if (!accepted || accepted.length === 0) {
@@ -1553,7 +1570,7 @@ async function loadSocialData(user) {
   }
 
   const friendIds = accepted
-    .map(r => r.from_user_id === user.id ? r.to_user_id : r.from_user_id)
+    .map(r => r.sender_id === user.id ? r.receiver_id : r.sender_id)
     .filter(Boolean);
 
   const today = todayStr();
@@ -1572,13 +1589,12 @@ async function loadSocialData(user) {
   (profilesRes.data || []).forEach(p => { profMap[p.user_id] = p; });
 
   friendsEl.innerHTML = accepted.map(r => {
-    const fid = r.from_user_id === user.id ? r.to_user_id : r.from_user_id;
-    const fEmail = r.from_user_id === user.id ? r.to_email : r.from_email;
-    const fNameFallback = r.from_user_id === user.id ? r.to_email : (r.from_name || r.from_email);
+    const fid = r.sender_id === user.id ? r.receiver_id : r.sender_id;
     const prof = profMap[fid] || {};
     const state = todayMap[fid] || {};
 
-    const displayName = prof.name || fNameFallback;
+    const fEmail = prof.email || '';
+    const displayName = prof.name || prof.email || fid;
     const streak = prof.streak || 0;
     const water = typeof state.water === 'number' ? state.water : 0;
     const waterPct = Math.min(100, Math.round(water / 2000 * 100));
