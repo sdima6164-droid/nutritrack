@@ -1442,16 +1442,27 @@ function updateSocialUI(session) {
   if (!root) return;
 
   if (!session) {
-    root.innerHTML = '<div class="glass-panel p-4 text-center" style="margin-top: 50px;"><h2>🔒 Авторизация</h2><p>Войдите, чтобы искать друзей</p></div>';
+    root.innerHTML = '<div class="glass-panel p-4 text-center" style="margin-top:50px;"><h2>🔒 Авторизация</h2><p>Войдите, чтобы искать друзей</p></div>';
   } else {
-    root.innerHTML = '<div class="glass-panel p-4" style="margin-top: 20px;"><h2 class="text-xl mb-4">Найти друга</h2><input type="email" id="friend-email-input" class="w-full p-2 mb-2 text-black rounded" placeholder="Введите email друга"><button id="add-friend-btn" class="w-full bg-blue-500 text-white p-2 rounded font-bold">Добавить</button></div>';
-
+    root.innerHTML = `
+      <div class="glass-panel p-4" style="margin-top:20px;">
+        <h2 class="text-xl mb-4">Найти друга</h2>
+        <input type="email" id="friend-email-input" class="w-full p-2 mb-2 text-black rounded" placeholder="Введите email друга">
+        <button id="add-friend-btn" class="w-full bg-blue-500 text-white p-2 rounded font-bold">Добавить</button>
+      </div>
+      <div class="glass-panel p-4" style="margin-top:12px;">
+        <h2 class="text-xl mb-4">Входящие заявки</h2>
+        <div id="social-requests"><div class="social-loading">⏳</div></div>
+      </div>
+      <div class="glass-panel p-4" style="margin-top:12px;">
+        <h2 class="text-xl mb-4">Мои друзья</h2>
+        <div id="social-friends"><div class="social-loading">⏳</div></div>
+      </div>
+    `;
     setTimeout(() => {
       const btn = document.getElementById('add-friend-btn');
       const input = document.getElementById('friend-email-input');
-      if (btn && input) {
-        btn.onclick = () => sendFriendRequest(input.value.trim());
-      }
+      if (btn && input) btn.onclick = () => sendFriendRequest(input.value.trim());
     }, 100);
   }
 }
