@@ -1507,9 +1507,10 @@ async function acceptFriendRequest(requestId) {
   const { error } = await sbClient
     .from('friendships')
     .update({ status: 'accepted' })
-    .eq('id', requestId);
+    .eq('id', requestId)
+    .eq('receiver_id', session.user.id);
   if (error) { showToast('❌ Ошибка'); return; }
-  showToast('✅ Заявка принята!');
+  alert('🤝 Дружба подтверждена!');
   await loadSocialData(session.user);
 }
 
@@ -1558,8 +1559,8 @@ async function loadSocialData(user) {
             <div class="src-email">${escapeHtml(displayEmail)}</div>
           </div>
           <div class="src-btns">
-            <button class="src-btn src-accept" onclick="acceptFriendRequest(${r.id})">✅</button>
-            <button class="src-btn src-decline" onclick="declineFriendRequest(${r.id})">✕</button>
+            <button class="src-btn src-accept" onclick="acceptFriendRequest('${r.id}')">Принять</button>
+            <button class="src-btn src-decline" onclick="declineFriendRequest('${r.id}')">✕</button>
           </div>
         </div>`;
       }).join('');
