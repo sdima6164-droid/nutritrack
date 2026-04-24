@@ -1514,6 +1514,39 @@ textarea:focus-visible { outline: none; }
 /* ===== AUTH SECTION ===== */
 .auth-section-title { margin-top: 24px; }
 
+#auth-email,
+#auth-password {
+  font-size: 16px;
+}
+
+.auth-error {
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  background: rgba(255,79,106,0.10);
+  border: 1px solid rgba(255,79,106,0.28);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  animation: fadeIn 0.22s ease;
+}
+
+.ios-hint {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.9;
+  text-align: center;
+  animation: fadeIn 0.22s ease;
+}
+
+.ios-hint strong { color: var(--text); font-weight: 700; }
+
 .auth-btn-row {
   display: flex;
   gap: 8px;

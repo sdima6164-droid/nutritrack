@@ -11,16 +11,28 @@ function initSupabase() {
 
 async function signUp(email, password) {
   if (!sbClient) { showToast('Supabase не подключён'); return; }
+  showAuthError('');
   const { data, error } = await sbClient.auth.signUp({ email, password });
-  if (error) { showToast('Ошибка: ' + error.message); return; }
+  if (error) { showAuthError('❌ ' + error.message); return; }
   showToast('✉️ Проверьте почту для подтверждения!');
   return data;
 }
 
 async function signIn(email, password) {
   if (!sbClient) { showToast('Supabase не подключён'); return; }
+  showAuthError('');
   const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-  if (error) { showToast('Ошибка: ' + error.message); return; }
+  if (error) {
+    const m = error.message;
+    if (/not confirmed/i.test(m)) {
+      showAuthError('📧 Email не подтверждён — проверьте почту и перейдите по ссылке.');
+    } else if (/invalid/i.test(m) || /credentials/i.test(m)) {
+      showAuthError('❌ Неверный email или пароль.');
+    } else {
+      showAuthError('❌ ' + m);
+    }
+    return;
+  }
   localStorage.setItem('sb_session', JSON.stringify(data.session));
   updateAuthUI(data.user);
   showAuthSuccess(data.user.email);
@@ -73,6 +85,14 @@ function showAuthSuccess(email) {
   setTimeout(() => alert(
     '🎉 Добро пожаловать!\n\nВы успешно авторизованы как:\n' + email + '\n\nВаш прогресс синхронизирован с облаком ☁️'
   ), 100);
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (!el) return;
+  if (!msg) { el.hidden = true; return; }
+  el.textContent = msg;
+  el.hidden = false;
 }
 
 async function restoreSession() {
@@ -137,20 +157,26 @@ async function loadFromCloud() {
   if (!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) return;
+  const uid = session.user.id;
 
-  const { data, error } = await sbClient
-    .from('user_data')
-    .select('state')
-    .eq('user_id', session.user.id)
-    .eq('date', currentDate)
-    .single();
-  if (error || !data?.state) return;
+  const [diaryRes, profileRes] = await Promise.all([
+    sbClient.from('user_data').select('state').eq('user_id', uid).eq('date', currentDate).single(),
+    sbClient.from('user_profiles').select('*').eq('user_id', uid).single(),
+  ]);
 
-  const { entries, water } = data.state;
-  if (Array.isArray(entries)) setDayLog(currentDate, entries);
-  if (typeof water === 'number') setWater(currentDate, water);
+  if (!diaryRes.error && diaryRes.data?.state) {
+    const { entries, water } = diaryRes.data.state;
+    if (Array.isArray(entries)) setDayLog(currentDate, entries);
+    if (typeof water === 'number') setWater(currentDate, water);
+    showToast('☁️ Данные загружены из облака');
+  }
+
+  if (!profileRes.error && profileRes.data) {
+    const { user_id, ...profileFields } = profileRes.data;
+    setProfile({ ...getProfile(), ...profileFields });
+  }
+
   renderDiary();
-  showToast('☁️ Данные загружены из облака');
 }
 
 /* ===== STATE ===== */
@@ -1267,6 +1293,10 @@ function launchConfetti() {
 /* ===== PWA ===== */
 let _installPrompt = null;
 
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1288,6 +1318,11 @@ window.addEventListener('appinstalled', () => {
 });
 
 function installApp() {
+  if (isIOS()) {
+    const hint = document.getElementById('ios-hint');
+    if (hint) hint.hidden = !hint.hidden;
+    return;
+  }
   if (!_installPrompt) return;
   _installPrompt.prompt();
   _installPrompt.userChoice.then(() => { _installPrompt = null; });
@@ -1359,6 +1394,11 @@ function scheduleWaterCheck() {
 document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
   restoreSession();
+
+  if (isIOS() && !window.navigator.standalone) {
+    const btn = document.getElementById('btn-install');
+    if (btn) { btn.hidden = false; btn.textContent = '📲 Как установить'; }
+  }
 
   if (Notification.permission === 'granted') scheduleWaterCheck();
 

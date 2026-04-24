@@ -278,6 +278,10 @@
       <button type="button" class="btn-install" id="btn-install" onclick="installApp()" hidden>
         📱 Установить на телефон
       </button>
+      <div id="ios-hint" class="ios-hint" hidden>
+        1. Нажмите <strong>«Поделиться» ↑</strong> внизу Safari<br>
+        2. Выберите <strong>«На экран "Домой"»</strong>
+      </div>
 
       <p class="form-section-title auth-section-title">☁️ Облачная синхронизация</p>
 
@@ -290,6 +294,7 @@
           <label class="form-label" for="auth-password">Пароль</label>
           <input id="auth-password" class="form-input" type="password" placeholder="Минимум 6 символов" autocomplete="current-password">
         </div>
+        <div id="auth-error" class="auth-error" hidden></div>
         <div class="auth-btn-row">
           <button type="button" class="btn-save" onclick="handleSignIn()">🔑 Войти</button>
           <button type="button" class="btn-save btn-signup" onclick="handleSignUp()">📝 Регистрация</button>
