@@ -1436,16 +1436,12 @@ function escapeHtml(str) {
 }
 
 function updateSocialUI(session) {
-  const ar = document.getElementById('social-auth-required');
-  const sc = document.getElementById('social-content');
-  if (!ar || !sc) return;
-  if (session?.user) {
-    ar.style.display = 'none';
-    sc.style.display = 'block';
-  } else {
-    ar.style.display = 'flex';
-    sc.style.display = 'none';
-  }
+  const lockContainer = document.getElementById('social-lock-container');
+  const searchContainer = document.getElementById('social-search-container');
+  if (lockContainer && searchContainer) {
+    if (session) { lockContainer.style.display = 'none'; searchContainer.style.display = 'block'; }
+    else { lockContainer.style.display = 'block'; searchContainer.style.display = 'none'; }
+  } else { console.error("Social containers missing in DOM!"); }
 }
 
 async function renderSocial() {
