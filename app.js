@@ -322,6 +322,7 @@ function switchTab(tab) {
   if (tab === 'profile') renderProfile();
   if (tab === 'nutri') renderNutri();
   if (tab === 'analytics') renderAnalytics();
+  if (tab === 'social') renderSocial();
 }
 
 /* ===== DIARY PAGE ===== */
@@ -679,7 +680,17 @@ async function syncProfileToCloud(profile) {
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) return;
   await sbClient.from('user_profiles').upsert(
-    { user_id: session.user.id, ...profile },
+    { user_id: session.user.id, email: session.user.email, ...profile },
+    { onConflict: 'user_id' }
+  );
+}
+
+async function syncStreakToCloud(streakCount) {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+  await sbClient.from('user_profiles').upsert(
+    { user_id: session.user.id, email: session.user.email, streak: streakCount },
     { onConflict: 'user_id' }
   );
 }
@@ -1409,6 +1420,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const badgeEl = document.getElementById('streak-badge-val');
   if (badgeEl) badgeEl.textContent = count;
   if (increased) launchConfetti();
+  syncStreakToCloud(count);
 
   switchTab('diary');
 
@@ -1416,3 +1428,185 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 });
+
+/* ===== SOCIAL HUB ===== */
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function renderSocial() {
+  if (!sbClient) { showSocialLocked(); return; }
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) { showSocialLocked(); return; }
+  document.getElementById('social-auth-required').hidden = true;
+  document.getElementById('social-content').hidden = false;
+  await loadSocialData(session.user);
+}
+
+function showSocialLocked() {
+  const ar = document.getElementById('social-auth-required');
+  const sc = document.getElementById('social-content');
+  if (ar) ar.hidden = false;
+  if (sc) sc.hidden = true;
+}
+
+async function sendFriendRequest() {
+  if (!sbClient) { showToast('Нет подключения'); return; }
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) { showToast('Войдите в аккаунт'); return; }
+
+  const email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
+  if (!email) { showToast('Введите email друга'); return; }
+  if (email === session.user.email.toLowerCase()) { showToast('Нельзя добавить себя'); return; }
+
+  const { data: existing } = await sbClient
+    .from('friend_requests')
+    .select('id,status')
+    .or(`and(from_user_id.eq.${session.user.id},to_email.eq.${email}),and(to_email.eq.${session.user.email},from_email.eq.${email})`)
+    .maybeSingle();
+
+  if (existing) {
+    showToast(existing.status === 'accepted' ? '✅ Уже в друзьях' : '⏳ Заявка уже отправлена');
+    return;
+  }
+
+  const profile = getProfile();
+  const { error } = await sbClient.from('friend_requests').insert({
+    from_user_id: session.user.id,
+    from_email: session.user.email,
+    from_name: profile.name || session.user.email,
+    to_email: email,
+    status: 'pending',
+  });
+
+  if (error) { showToast('❌ ' + error.message); return; }
+  const inp = document.getElementById('friend-email-input');
+  if (inp) inp.value = '';
+  showToast('✅ Заявка отправлена!');
+}
+
+async function acceptFriendRequest(requestId) {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+  const { error } = await sbClient
+    .from('friend_requests')
+    .update({ status: 'accepted', to_user_id: session.user.id })
+    .eq('id', requestId);
+  if (error) { showToast('❌ Ошибка'); return; }
+  showToast('✅ Заявка принята!');
+  await loadSocialData(session.user);
+}
+
+async function declineFriendRequest(requestId) {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+  await sbClient.from('friend_requests').update({ status: 'declined' }).eq('id', requestId);
+  showToast('Заявка отклонена');
+  await loadSocialData(session.user);
+}
+
+async function loadSocialData(user) {
+  const requestsEl = document.getElementById('social-requests');
+  const friendsEl = document.getElementById('social-friends');
+  if (requestsEl) requestsEl.innerHTML = '<div class="social-loading">⏳</div>';
+  if (friendsEl) friendsEl.innerHTML = '<div class="social-loading">⏳</div>';
+
+  const { data: incoming } = await sbClient
+    .from('friend_requests')
+    .select('*')
+    .eq('to_email', user.email)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (requestsEl) {
+    if (!incoming || incoming.length === 0) {
+      requestsEl.innerHTML = '<div class="social-empty">Нет входящих заявок</div>';
+    } else {
+      requestsEl.innerHTML = incoming.map(r => `
+        <div class="social-req-card">
+          <div class="src-avatar">${escapeHtml((r.from_name || r.from_email).charAt(0).toUpperCase())}</div>
+          <div class="src-info">
+            <div class="src-name">${escapeHtml(r.from_name || r.from_email)}</div>
+            <div class="src-email">${escapeHtml(r.from_email)}</div>
+          </div>
+          <div class="src-btns">
+            <button class="src-btn src-accept" onclick="acceptFriendRequest(${r.id})">✅</button>
+            <button class="src-btn src-decline" onclick="declineFriendRequest(${r.id})">✕</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  const { data: accepted } = await sbClient
+    .from('friend_requests')
+    .select('*')
+    .eq('status', 'accepted')
+    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`);
+
+  if (!friendsEl) return;
+  if (!accepted || accepted.length === 0) {
+    friendsEl.innerHTML = '<div class="social-empty">Пока нет друзей — добавьте их по email!</div>';
+    return;
+  }
+
+  const friendIds = accepted
+    .map(r => r.from_user_id === user.id ? r.to_user_id : r.from_user_id)
+    .filter(Boolean);
+
+  const today = todayStr();
+  const [todayRes, profilesRes] = await Promise.all([
+    friendIds.length > 0
+      ? sbClient.from('user_data').select('user_id,state').in('user_id', friendIds).eq('date', today)
+      : Promise.resolve({ data: [] }),
+    friendIds.length > 0
+      ? sbClient.from('user_profiles').select('user_id,name,email,targetK,streak').in('user_id', friendIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const todayMap = {};
+  (todayRes.data || []).forEach(d => { todayMap[d.user_id] = d.state || {}; });
+  const profMap = {};
+  (profilesRes.data || []).forEach(p => { profMap[p.user_id] = p; });
+
+  friendsEl.innerHTML = accepted.map(r => {
+    const fid = r.from_user_id === user.id ? r.to_user_id : r.from_user_id;
+    const fEmail = r.from_user_id === user.id ? r.to_email : r.from_email;
+    const fNameFallback = r.from_user_id === user.id ? r.to_email : (r.from_name || r.from_email);
+    const prof = profMap[fid] || {};
+    const state = todayMap[fid] || {};
+
+    const displayName = prof.name || fNameFallback;
+    const streak = prof.streak || 0;
+    const water = typeof state.water === 'number' ? state.water : 0;
+    const waterPct = Math.min(100, Math.round(water / 2000 * 100));
+    const entries = Array.isArray(state.entries) ? state.entries : [];
+    const kcal = entries.reduce((s, e) => s + (e.calories || 0), 0);
+    const targetK = prof.targetK || 2000;
+    const kcalPct = Math.min(100, Math.round(kcal / targetK * 100));
+
+    return `
+      <div class="social-friend-card">
+        <div class="sfc-avatar">${escapeHtml(displayName.charAt(0).toUpperCase())}</div>
+        <div class="sfc-body">
+          <div class="sfc-top">
+            <div class="sfc-name">${escapeHtml(displayName)}</div>
+            <div class="sfc-streak">🔥 ${streak}</div>
+          </div>
+          <div class="sfc-email">${escapeHtml(fEmail)}</div>
+          <div class="sfc-bars">
+            <div class="sfc-bar-row">
+              <span class="sfc-bar-label">💧 ${water} мл</span>
+              <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-water" style="width:${waterPct}%"></div></div>
+            </div>
+            <div class="sfc-bar-row">
+              <span class="sfc-bar-label">🔥 ${kcal} ккал</span>
+              <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-kcal" style="width:${kcalPct}%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}

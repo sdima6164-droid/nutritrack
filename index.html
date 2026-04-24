@@ -383,6 +383,39 @@
 
   </div>
 
+  <!-- ═══════════════ СОЦИАЛЬНЫЙ ХАБ ═══════════════ -->
+  <div id="page-social" class="page">
+
+    <header class="page-header">
+      <div class="page-title">Друзья</div>
+    </header>
+
+    <div id="social-auth-required" class="social-locked" hidden>
+      <div class="social-lock-icon">🔒</div>
+      <p class="social-lock-text">Войдите в аккаунт,<br>чтобы пользоваться социальными функциями</p>
+      <button type="button" class="social-login-btn" onclick="switchTab('profile')">Перейти к авторизации</button>
+    </div>
+
+    <div id="social-content" hidden>
+
+      <p class="section-title">Найти друга</p>
+      <div class="social-search-wrap">
+        <input class="form-input" id="friend-email-input" type="email" placeholder="Email друга" autocomplete="off">
+        <button type="button" class="social-add-btn" onclick="sendFriendRequest()">Добавить</button>
+      </div>
+
+      <p class="section-title">Входящие заявки</p>
+      <div id="social-requests" class="social-list"></div>
+
+      <p class="section-title">Мои друзья</p>
+      <div id="social-friends" class="social-list"></div>
+
+      <div class="spacer-sm"></div>
+
+    </div>
+
+  </div>
+
   <!-- ═══════════════ НАВИГАЦИЯ ═══════════════ -->
   <nav class="bottom-nav" aria-label="Основная навигация">
     <button type="button" class="nav-btn active" id="nav-diary" onclick="switchTab('diary')" aria-current="page">
@@ -400,6 +433,10 @@
     <button type="button" class="nav-btn" id="nav-nutri" onclick="switchTab('nutri')">
       <span class="icon" aria-hidden="true">🥗</span>
       <span>Нутрициолог</span>
+    </button>
+    <button type="button" class="nav-btn" id="nav-social" onclick="switchTab('social')">
+      <span class="icon" aria-hidden="true">👥</span>
+      <span>Друзья</span>
     </button>
   </nav>
 
