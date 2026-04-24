@@ -1428,8 +1428,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 
-  const addBtn = document.getElementById('add-friend-btn');
-  if (addBtn) addBtn.onclick = () => sendFriendRequest(document.getElementById('friend-email-input').value);
 });
 
 /* ===== SOCIAL HUB ===== */
@@ -1439,11 +1437,23 @@ function escapeHtml(str) {
 }
 
 function updateSocialUI(session) {
-  const lock = document.getElementById('social-lock-container');
-  const search = document.getElementById('social-search-container');
-  if (!lock || !search) { console.warn('Social elements missing'); return; }
-  lock.style.display = session ? 'none' : 'flex';
-  search.style.display = session ? 'block' : 'none';
+  // Find the main wrapper of the Social tab (adjust ID if needed, e.g., 'social-view' or 'social-tab')
+  const root = document.querySelector('#social-tab') || document.querySelector('[id*="social"]');
+  if (!root) return;
+
+  if (!session) {
+    root.innerHTML = '<div class="glass-panel p-4 text-center" style="margin-top: 50px;"><h2>🔒 Авторизация</h2><p>Войдите, чтобы искать друзей</p></div>';
+  } else {
+    root.innerHTML = '<div class="glass-panel p-4" style="margin-top: 20px;"><h2 class="text-xl mb-4">Найти друга</h2><input type="email" id="friend-email-input" class="w-full p-2 mb-2 text-black rounded" placeholder="Введите email друга"><button id="add-friend-btn" class="w-full bg-blue-500 text-white p-2 rounded font-bold">Добавить</button></div>';
+
+    setTimeout(() => {
+      const btn = document.getElementById('add-friend-btn');
+      const input = document.getElementById('friend-email-input');
+      if (btn && input) {
+        btn.onclick = () => sendFriendRequest(input.value.trim());
+      }
+    }, 100);
+  }
 }
 
 async function renderSocial() {
@@ -1454,12 +1464,12 @@ async function renderSocial() {
   if (session?.user) await loadSocialData(session.user);
 }
 
-async function sendFriendRequest() {
+async function sendFriendRequest(emailArg) {
   if (!sbClient) { showToast('Нет подключения'); return; }
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) { showToast('Войдите в аккаунт'); return; }
 
-  const email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
+  const email = (emailArg || document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
   if (!email) { showToast('Введите email друга'); return; }
   if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
