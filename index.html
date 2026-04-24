@@ -214,7 +214,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="prof-age">Возраст</label>
-          <input id="prof-age" class="form-input" type="number" placeholder="25" min="10" max="100" inputmode="numeric">
+          <input id="prof-age" class="form-input" type="number" placeholder="25" min="10" max="100" inputmode="numeric" onchange="updateBMI()">
         </div>
         <div class="form-group">
           <label class="form-label" for="prof-height">Рост (см)</label>
@@ -224,6 +224,26 @@
       <div class="form-group">
         <label class="form-label" for="prof-weight">Вес (кг)</label>
         <input id="prof-weight" class="form-input" type="number" placeholder="70" min="30" max="300" inputmode="decimal" onchange="updateBMI()">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="prof-gender">Пол</label>
+          <select id="prof-gender" class="form-input form-select" onchange="updateBMI()">
+            <option value="male">Мужской</option>
+            <option value="female">Женский</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prof-activity">Активность</label>
+          <select id="prof-activity" class="form-input form-select" onchange="updateBMI()">
+            <option value="1.2">Сидячий</option>
+            <option value="1.375">Лёгкая (1–3 д/нед)</option>
+            <option value="1.55">Умеренная (3–5 д/нед)</option>
+            <option value="1.725">Высокая (6–7 д/нед)</option>
+            <option value="1.9">Очень высокая</option>
+          </select>
+        </div>
       </div>
 
       <p class="form-section-title">Моя цель</p>

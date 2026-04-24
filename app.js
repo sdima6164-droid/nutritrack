@@ -531,18 +531,51 @@ function addFoodManual() {
 }
 
 /* ===== PROFILE PAGE ===== */
+function updateBMI() {
+  const weight = parseFloat(document.getElementById('prof-weight')?.value) || 0;
+  const height = parseInt(document.getElementById('prof-height')?.value)   || 0;
+  const el = document.getElementById('prof-bmi-display');
+  if (el && weight > 0 && height > 0) {
+    el.textContent = (weight / ((height / 100) ** 2)).toFixed(1);
+  }
+  recalcTargets();
+}
+
+function recalcTargets() {
+  const weight   = parseFloat(document.getElementById('prof-weight')?.value)   || 0;
+  const height   = parseInt(document.getElementById('prof-height')?.value)     || 0;
+  const age      = parseInt(document.getElementById('prof-age')?.value)        || 0;
+  const gender   = document.getElementById('prof-gender')?.value   || 'male';
+  const activity = parseFloat(document.getElementById('prof-activity')?.value) || 1.2;
+  if (!weight || !height || !age) return;
+
+  const bmr  = gender === 'male'
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+
+  const adj  = { cut: -500, maintain: 0, bulk: 300 };
+  const tdee = Math.round(bmr * activity + (adj[profileGoal] || 0));
+
+  setVal('prof-targetP', Math.round(tdee * 0.30 / 4));
+  setVal('prof-targetF', Math.round(tdee * 0.30 / 9));
+  setVal('prof-targetC', Math.round(tdee * 0.40 / 4));
+  setVal('prof-targetK', tdee);
+}
+
 function renderProfile() {
   const p = getProfile();
   profileGoal = p.goal || 'maintain';
 
-  setVal('prof-name',    p.name    || '');
-  setVal('prof-age',     p.age     || '');
-  setVal('prof-weight',  p.weight  || '');
-  setVal('prof-height',  p.height  || '');
-  setVal('prof-targetP', p.targetP || 150);
-  setVal('prof-targetF', p.targetF || 65);
-  setVal('prof-targetC', p.targetC || 200);
-  setVal('prof-targetK', p.targetK || 2000);
+  setVal('prof-name',     p.name     || '');
+  setVal('prof-age',      p.age      || '');
+  setVal('prof-weight',   p.weight   || '');
+  setVal('prof-height',   p.height   || '');
+  setVal('prof-gender',   p.gender   || 'male');
+  setVal('prof-activity', p.activity || '1.2');
+  setVal('prof-targetP',  p.targetP  || 150);
+  setVal('prof-targetF',  p.targetF  || 65);
+  setVal('prof-targetC',  p.targetC  || 200);
+  setVal('prof-targetK',  p.targetK  || 2000);
 
   // Goal buttons
   document.querySelectorAll('.goal-opt').forEach(b => {
@@ -593,20 +626,34 @@ function calcAvgKcal() {
 }
 
 function saveProfile() {
+  recalcTargets();
   const p = {
-    name: document.getElementById('prof-name').value.trim(),
-    age: parseInt(document.getElementById('prof-age').value) || 0,
-    weight: parseFloat(document.getElementById('prof-weight').value) || 0,
-    height: parseInt(document.getElementById('prof-height').value) || 0,
-    goal: profileGoal,
-    targetP: parseFloat(document.getElementById('prof-targetP').value) || 150,
-    targetF: parseFloat(document.getElementById('prof-targetF').value) || 65,
-    targetC: parseFloat(document.getElementById('prof-targetC').value) || 200,
-    targetK: parseFloat(document.getElementById('prof-targetK').value) || 2000,
+    name:     document.getElementById('prof-name').value.trim(),
+    age:      parseInt(document.getElementById('prof-age').value)      || 0,
+    weight:   parseFloat(document.getElementById('prof-weight').value) || 0,
+    height:   parseInt(document.getElementById('prof-height').value)   || 0,
+    gender:   document.getElementById('prof-gender')?.value   || 'male',
+    activity: parseFloat(document.getElementById('prof-activity')?.value) || 1.2,
+    goal:     profileGoal,
+    targetP:  parseFloat(document.getElementById('prof-targetP').value) || 150,
+    targetF:  parseFloat(document.getElementById('prof-targetF').value) || 65,
+    targetC:  parseFloat(document.getElementById('prof-targetC').value) || 200,
+    targetK:  parseFloat(document.getElementById('prof-targetK').value) || 2000,
   };
   setProfile(p);
+  syncProfileToCloud(p);
   showToast('✓ Профиль сохранён');
   renderDiary();
+}
+
+async function syncProfileToCloud(profile) {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+  await sbClient.from('user_profiles').upsert(
+    { user_id: session.user.id, ...profile },
+    { onConflict: 'user_id' }
+  );
 }
 
 function setGoal(goal) {
@@ -614,19 +661,7 @@ function setGoal(goal) {
   document.querySelectorAll('.goal-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.goal === goal);
   });
-  // Auto-set targets based on goal
-  const p = getProfile();
-  const w = p.weight || 70;
-  const goals = {
-    cut:      { p: Math.round(w*2.2), f: Math.round(w*0.8), c: Math.round(w*2), k: Math.round(w*28) },
-    maintain: { p: Math.round(w*1.8), f: Math.round(w*1.0), c: Math.round(w*3), k: Math.round(w*33) },
-    bulk:     { p: Math.round(w*2.0), f: Math.round(w*1.2), c: Math.round(w*4.5), k: Math.round(w*38) },
-  };
-  const t = goals[goal];
-  document.getElementById('prof-targetP').value = t.p;
-  document.getElementById('prof-targetF').value = t.f;
-  document.getElementById('prof-targetC').value = t.c;
-  document.getElementById('prof-targetK').value = t.k;
+  recalcTargets();
 }
 
 function renderWeekChart() {
