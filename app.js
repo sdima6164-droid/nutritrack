@@ -1464,7 +1464,7 @@ async function sendFriendRequest() {
   if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
   console.log('Search attempt:', email.trim());
-  const { data, error: searchError } = await supabase.from('profiles').select('*').ilike('email', email.trim());
+  const { data, error: searchError } = await sbClient.from('profiles').select('*').ilike('email', email.trim());
   console.log('Supabase response:', data, searchError);
 
   if (searchError) { alert(searchError.message); return; }
