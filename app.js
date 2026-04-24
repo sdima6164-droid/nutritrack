@@ -1427,6 +1427,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
+
+  const addBtn = document.getElementById('add-friend-btn');
+  if (addBtn) addBtn.onclick = () => sendFriendRequest(document.getElementById('friend-email-input').value);
 });
 
 /* ===== SOCIAL HUB ===== */
@@ -1436,12 +1439,11 @@ function escapeHtml(str) {
 }
 
 function updateSocialUI(session) {
-  const lockContainer = document.getElementById('social-lock-container');
-  const searchContainer = document.getElementById('social-search-container');
-  if (lockContainer && searchContainer) {
-    if (session) { lockContainer.style.display = 'none'; searchContainer.style.display = 'block'; }
-    else { lockContainer.style.display = 'block'; searchContainer.style.display = 'none'; }
-  } else { console.error("Social containers missing in DOM!"); }
+  const lock = document.getElementById('social-lock-container');
+  const search = document.getElementById('social-search-container');
+  if (!lock || !search) { console.warn('Social elements missing'); return; }
+  lock.style.display = session ? 'none' : 'flex';
+  search.style.display = session ? 'block' : 'none';
 }
 
 async function renderSocial() {

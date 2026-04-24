@@ -390,28 +390,15 @@
       <div class="page-title">Друзья</div>
     </header>
 
-    <div id="social-lock-container" class="social-locked" hidden>
-      <div class="social-lock-icon">🔒</div>
-      <p class="social-lock-text">Войдите в аккаунт,<br>чтобы пользоваться социальными функциями</p>
-      <button type="button" class="social-login-btn" onclick="switchTab('profile')">Перейти к авторизации</button>
-    </div>
-
-    <div id="social-search-container" hidden>
-
-      <p class="section-title">Найти друга</p>
-      <div class="social-search-wrap">
-        <input class="form-input" id="friend-email-input" type="email" placeholder="Email друга" autocomplete="off">
-        <button type="button" class="social-add-btn" onclick="sendFriendRequest()">Добавить</button>
+    <div id="social-tab-content">
+      <div id="social-lock-container" class="glass-panel text-center p-4">
+        <h2>🔒 Авторизация</h2>
+        <p>Войдите, чтобы искать друзей</p>
       </div>
-
-      <p class="section-title">Входящие заявки</p>
-      <div id="social-requests" class="social-list"></div>
-
-      <p class="section-title">Мои друзья</p>
-      <div id="social-friends" class="social-list"></div>
-
-      <div class="spacer-sm"></div>
-
+      <div id="social-search-container" class="glass-panel p-4" style="display:none;">
+        <input type="email" id="friend-email-input" class="w-full p-2 mb-2 rounded" placeholder="Email друга">
+        <button id="add-friend-btn" class="w-full bg-blue-500 text-white p-2 rounded">Добавить</button>
+      </div>
     </div>
 
   </div>
