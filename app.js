@@ -529,9 +529,11 @@ function analyzeNutrition() {
   const fRatio = targets.fats     > 0 ? totals.fats     / targets.fats     : 0;
   const wRatio = water / WATER_GOAL;
 
-  let advice;
+  let advice = 'Отличный темп! Показатели в норме, продолжай в том же духе 🚀';
 
-  if (wRatio < 0.5) {
+  if (entries.length === 0) {
+    advice = '🍽️ Добавь первый приём пищи, чтобы получить персональный совет.';
+  } else if (wRatio < 0.5) {
     advice = '💧 Твой организм просит пить! Выпей стакан воды прямо сейчас.';
   } else if (pRatio < 0.5 && hour >= 12) {
     advice = '💪 Недобор белка! Отличным перекусом станет творог или пара вареных яиц.';
@@ -544,10 +546,6 @@ function analyzeNutrition() {
     wRatio >= 0.5
   ) {
     advice = '✨ Ты в отличной форме! БЖУ в идеальном балансе, так держать!';
-  } else if (entries.length === 0) {
-    advice = '🍽️ Добавь первый приём пищи, чтобы получить персональный совет.';
-  } else {
-    advice = '📊 Продолжай следить за рационом — советы обновятся по мере добавления данных.';
   }
 
   const el = document.getElementById('sa-text');
