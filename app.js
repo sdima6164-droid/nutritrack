@@ -1436,9 +1436,10 @@ function escapeHtml(str) {
 }
 
 async function renderSocial() {
-  if (!sbClient) { showSocialLocked(); return; }
+  showSocialLocked();
+  if (!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
-  if (!session?.user) { showSocialLocked(); return; }
+  if (!session?.user) return;
   document.getElementById('social-auth-required').hidden = true;
   document.getElementById('social-content').hidden = false;
   await loadSocialData(session.user);
@@ -1458,7 +1459,7 @@ async function sendFriendRequest() {
 
   const email = (document.getElementById('friend-email-input')?.value || '').trim().toLowerCase();
   if (!email) { showToast('Введите email друга'); return; }
-  if (email === session.user.email.toLowerCase()) { showToast('Нельзя добавить себя'); return; }
+  if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
   const { data: targetUser } = await sbClient
     .from('user_profiles')
