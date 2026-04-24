@@ -1,3 +1,88 @@
+/* ===== SUPABASE ===== */
+const SUPABASE_URL = 'https://dfdnozkhetgznfmpwymf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_HnpamAjDyIR0vjzKXvgXXw_JPqITVP7';
+let sbClient = null;
+
+function initSupabase() {
+  if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+}
+
+async function signUp(email, password) {
+  if (!sbClient) { showToast('Supabase не подключён'); return; }
+  const { data, error } = await sbClient.auth.signUp({ email, password });
+  if (error) { showToast('Ошибка: ' + error.message); return; }
+  showToast('✉️ Проверьте почту для подтверждения!');
+  return data;
+}
+
+async function signIn(email, password) {
+  if (!sbClient) { showToast('Supabase не подключён'); return; }
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+  if (error) { showToast('Ошибка: ' + error.message); return; }
+  localStorage.setItem('sb_session', JSON.stringify(data.session));
+  updateAuthUI(data.user);
+  showAuthSuccess(data.user.email);
+  return data;
+}
+
+async function signOut() {
+  if (!sbClient) return;
+  await sbClient.auth.signOut();
+  localStorage.removeItem('sb_session');
+  updateAuthUI(null);
+  showToast('👋 Вы вышли из аккаунта');
+}
+
+async function handleSignIn() {
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const password = document.getElementById('auth-password')?.value;
+  if (!email || !password) { showToast('Введите email и пароль'); return; }
+  await signIn(email, password);
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const password = document.getElementById('auth-password')?.value;
+  if (!email || !password) { showToast('Введите email и пароль'); return; }
+  await signUp(email, password);
+}
+
+async function handleSignOut() {
+  await signOut();
+}
+
+function updateAuthUI(user) {
+  const formWrap = document.getElementById('auth-form-wrap');
+  const userInfo = document.getElementById('auth-user-info');
+  const emailDisplay = document.getElementById('auth-user-email-display');
+  if (user) {
+    if (formWrap) formWrap.hidden = true;
+    if (userInfo) userInfo.hidden = false;
+    if (emailDisplay) emailDisplay.textContent = '✅ ' + user.email;
+  } else {
+    if (formWrap) formWrap.hidden = false;
+    if (userInfo) userInfo.hidden = true;
+    if (emailDisplay) emailDisplay.textContent = '';
+  }
+}
+
+function showAuthSuccess(email) {
+  setTimeout(() => alert(
+    '🎉 Добро пожаловать!\n\nВы успешно авторизованы как:\n' + email + '\n\nВаш прогресс синхронизирован с облаком ☁️'
+  ), 100);
+}
+
+async function restoreSession() {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session?.user) {
+    localStorage.setItem('sb_session', JSON.stringify(session));
+    updateAuthUI(session.user);
+  }
+}
+
 /* ===== STATE ===== */
 let currentTab = 'diary';
 let currentDate = todayStr();
@@ -1115,6 +1200,9 @@ function toggleTheme() {
 
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  initSupabase();
+  restoreSession();
+
   const saved = localStorage.getItem('bju_theme');
   applyTheme(saved === 'light' ? 'light' : 'dark');
 

@@ -1500,6 +1500,39 @@ textarea:focus-visible { outline: none; }
   text-align: center;
 }
 
+/* ===== AUTH SECTION ===== */
+.auth-section-title { margin-top: 24px; }
+
+.auth-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-btn-row .btn-save { flex: 1; margin-top: 0; }
+
+.btn-signup {
+  background: linear-gradient(135deg, #6c3de8, #a855f7);
+}
+
+.btn-signup:hover {
+  box-shadow: 0 4px 28px rgba(168, 85, 247, 0.35);
+}
+
+.btn-signout {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-signout:hover {
+  box-shadow: 0 4px 28px rgba(239, 68, 68, 0.35);
+}
+
+.auth-user-email {
+  padding: 12px 0;
+  font-size: 14px;
+  color: var(--clr-protein, #a3e635);
+}
+
 /* ===== PWA INSTALL BUTTON ===== */
 .btn-install {
   display: flex;
