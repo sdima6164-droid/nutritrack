@@ -1463,13 +1463,13 @@ async function sendFriendRequest() {
   if (!email) { showToast('Введите email друга'); return; }
   if (email === session.user.email.toLowerCase()) { showToast('Вы не можете добавить самого себя'); return; }
 
-  const { data: targetUser } = await sbClient
-    .from('user_profiles')
-    .select('user_id')
-    .eq('email', email)
-    .maybeSingle();
+  console.log('Search attempt:', email.trim());
+  const { data, error: searchError } = await supabase.from('profiles').select('*').ilike('email', email.trim());
+  console.log('Supabase response:', data, searchError);
 
-  if (!targetUser) { showToast('❌ Пользователь не найден'); return; }
+  if (searchError) { alert(searchError.message); return; }
+  if (!data || data.length === 0) { alert('❌ Пользователь не найден в таблице profiles'); return; }
+  const targetUser = { user_id: data[0].id };
 
   const { data: existing } = await sbClient
     .from('friendships')
