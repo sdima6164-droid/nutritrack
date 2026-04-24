@@ -1544,6 +1544,27 @@ textarea:focus-visible { outline: none; }
   color: var(--clr-protein, #a3e635);
 }
 
+/* ===== NOTIFICATION BUTTON ===== */
+.btn-notif {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 4px 20px rgba(245,158,11,0.2);
+}
+.btn-notif:active { transform: scale(0.97); }
+
 /* ===== PWA INSTALL BUTTON ===== */
 .btn-install {
   display: flex;

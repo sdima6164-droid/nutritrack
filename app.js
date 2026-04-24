@@ -255,6 +255,7 @@ function changeWater(delta) {
   const prev = getWater(currentDate);
   const ml = Math.max(0, Math.min(WATER_GOAL, prev + delta));
   setWater(currentDate, ml);
+  if (delta > 0) localStorage.setItem('last_water_time', Date.now().toString());
   renderWater();
   if (delta > 0 && ml >= WATER_GOAL) {
     showToast('💧 Цель по воде достигнута!');
@@ -306,6 +307,7 @@ function renderDiary() {
   try { entries = getDayLog(currentDate); } catch(e) { entries = []; }
   const totals = sumLog(entries);
   const targets = getTargets();
+  checkCalorieGoal(totals, targets);
 
   // Rings — each guarded inside renderRing
   renderRing('ring-p', 'protein', totals.proteins, targets.proteins, 'Б');
@@ -1307,10 +1309,58 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+/* ===== NOTIFICATIONS ===== */
+function enableNotifications() {
+  if (!('Notification' in window)) { showToast('Уведомления не поддерживаются'); return; }
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') {
+      localStorage.setItem('notif_enabled', '1');
+      showToast('🔔 Уведомления включены!');
+      scheduleWaterCheck();
+    } else {
+      showToast('Разрешение не получено');
+    }
+  });
+}
+
+function sendNotification(title, body, tag) {
+  if (Notification.permission !== 'granted') return;
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SHOW_NOTIFICATION', title, body, tag });
+  } else {
+    new Notification(title, { body, icon: './icon-192.svg', tag });
+  }
+}
+
+function checkWaterReminder() {
+  if (Notification.permission !== 'granted') return;
+  const hour = new Date().getHours();
+  if (hour < 8 || hour >= 22) return;
+  const last = parseInt(localStorage.getItem('last_water_time') || '0', 10);
+  if (last && Date.now() - last > 3 * 60 * 60 * 1000) {
+    sendNotification('Пора пить воду! 💧', 'Не забывайте соблюдать водный баланс', 'water-reminder');
+  }
+}
+
+function checkCalorieGoal(totals, targets) {
+  if (Notification.permission !== 'granted') return;
+  if (totals.calories < targets.calories) return;
+  const key = 'notif_goal_' + currentDate;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  sendNotification('Цель достигнута! 🔥', 'Отличная работа сегодня! Вы выполнили дневную норму калорий', 'calorie-goal');
+}
+
+function scheduleWaterCheck() {
+  setInterval(checkWaterReminder, 30 * 60 * 1000);
+}
+
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
   restoreSession();
+
+  if (Notification.permission === 'granted') scheduleWaterCheck();
 
   const saved = localStorage.getItem('bju_theme');
   applyTheme(saved === 'light' ? 'light' : 'dark');

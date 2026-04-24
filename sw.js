@@ -26,6 +26,19 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag } = event.data;
+    self.registration.showNotification(title, {
+      body,
+      icon: './icon-192.svg',
+      badge: './icon-192.svg',
+      tag: tag || 'nmd-notification',
+      vibrate: [200, 100, 200],
+    });
+  }
+});
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
