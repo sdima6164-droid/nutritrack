@@ -288,6 +288,7 @@ function changeWater(delta) {
     if (prev < WATER_GOAL) launchConfetti();
   }
   syncToCloud();
+  syncWaterToCloud(ml);
 }
 
 /* ===== MACRO CALCULATIONS ===== */
@@ -691,6 +692,57 @@ async function syncStreakToCloud(streakCount) {
   if (!session?.user) return;
   await sbClient.from('user_profiles').upsert(
     { user_id: session.user.id, email: session.user.email, streak: streakCount },
+    { onConflict: 'user_id' }
+  );
+}
+
+async function checkStreak() {
+  if (!sbClient) return updateStreak();
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return updateStreak();
+
+  const today = todayStr();
+  const uid = session.user.id;
+  const { data: prof } = await sbClient
+    .from('user_profiles')
+    .select('streak,last_active_date')
+    .eq('user_id', uid)
+    .single();
+
+  let count = 1;
+  let increased = false;
+  if (prof) {
+    const last = prof.last_active_date;
+    const prev = prof.streak || 0;
+    if (last === today) {
+      count = prev || 1;
+    } else if (last === shiftDate(today, -1)) {
+      count = prev + 1;
+      increased = true;
+    }
+  }
+
+  await sbClient.from('user_profiles').upsert(
+    { user_id: uid, email: session.user.email, streak: count, last_active_date: today },
+    { onConflict: 'user_id' }
+  );
+  localStorage.setItem('bju_streak', JSON.stringify({ count, lastDate: today }));
+
+  const badgeEl = document.getElementById('streak-badge-val');
+  if (badgeEl) badgeEl.textContent = count;
+  const sv = document.getElementById('streak-val'); if (sv) sv.textContent = count;
+  const sl = document.getElementById('streak-label');
+  if (sl) sl.textContent = count === 1 ? 'день подряд' : (count < 5 ? 'дня подряд' : 'дней подряд');
+  if (increased) launchConfetti();
+  return { count, increased };
+}
+
+async function syncWaterToCloud(ml) {
+  if (!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) return;
+  await sbClient.from('user_profiles').upsert(
+    { user_id: session.user.id, email: session.user.email, current_water: ml },
     { onConflict: 'user_id' }
   );
 }
@@ -1420,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const badgeEl = document.getElementById('streak-badge-val');
   if (badgeEl) badgeEl.textContent = count;
   if (increased) launchConfetti();
-  syncStreakToCloud(count);
+  checkStreak();
 
   switchTab('diary');
 
@@ -1619,7 +1671,7 @@ async function loadSocialData(user) {
         <div class="sfc-body">
           <div class="sfc-top">
             <div class="sfc-name">${escapeHtml(displayName)}</div>
-            <div class="sfc-streak">🔥 ${streak}</div>
+            <div class="sfc-streak${streak > 0 ? ' sfc-streak-active' : ''}">🔥 ${streak}</div>
           </div>
           <div class="sfc-email">${escapeHtml(fEmail)}</div>
           <div class="sfc-bars">
