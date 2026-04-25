@@ -493,6 +493,34 @@ function handleSearch() {
     </div>`).join('');
 }
 
+function startVoiceSearch() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Голосовой ввод не поддерживается'); return; }
+
+  const btn = document.getElementById('voice-btn');
+  const input = document.getElementById('search-input');
+  const rec = new SR();
+  rec.lang = 'ru-RU';
+  rec.continuous = false;
+  rec.interimResults = false;
+
+  rec.onstart = () => { if (btn) btn.classList.add('listening'); };
+
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    if (input) { input.value = text; handleSearch(); }
+  };
+
+  rec.onerror = (e) => {
+    if (btn) btn.classList.remove('listening');
+    if (e.error !== 'no-speech') showToast('Ошибка голосового ввода');
+  };
+
+  rec.onend = () => { if (btn) btn.classList.remove('listening'); };
+
+  rec.start();
+}
+
 function selectFood(id) {
   selectedFood = FOODS_DB.find(f => f.id === id);
   handleSearch();
@@ -1473,6 +1501,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (badgeEl) badgeEl.textContent = count;
   if (increased) launchConfetti();
   checkStreak();
+
+  if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+    const vb = document.getElementById('voice-btn');
+    if (vb) vb.hidden = true;
+  }
 
   switchTab('diary');
 

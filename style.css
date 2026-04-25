@@ -971,7 +971,7 @@ select.form-select option { background: #1a1a2e; color: var(--text); }
 
 .search-input {
   width: 100%;
-  padding: 11px 13px 11px 40px;
+  padding: 11px 44px 11px 40px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-sm);
@@ -988,6 +988,30 @@ select.form-select option { background: #1a1a2e; color: var(--text); }
 }
 
 .search-input::placeholder { color: var(--text2); }
+
+.voice-btn {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.voice-btn:hover { opacity: 1; }
+.voice-btn.listening {
+  opacity: 1;
+  will-change: transform, opacity;
+  animation: voice-pulse 0.7s ease-in-out infinite;
+}
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+  50% { opacity: 0.6; transform: translateY(-50%) scale(1.35); }
+}
 
 .food-search-results { display: flex; flex-direction: column; gap: 6px; }
 
