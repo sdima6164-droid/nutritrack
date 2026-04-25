@@ -323,7 +323,23 @@ function showTab(tabName) {
     if (tabName === 'diary') renderDiary();
     if (tabName === 'profile') renderProfile();
     if (tabName === 'nutri') renderNutri();
-    if (tabName === 'analytics') setTimeout(renderCharts, 100);
+    if (tabName === 'analytics') {
+      const analyticsRoot = document.getElementById('analytics-tab');
+      if (analyticsRoot) {
+        analyticsRoot.style.display = 'block';
+        analyticsRoot.innerHTML = `
+          <div class="p-4 overflow-y-auto" style="max-height:80vh;">
+            <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;color:#fff;">📈 Аналитика</h2>
+            <div class="glass-panel p-4 mb-4" style="height:320px;position:relative;">
+              <canvas id="chart-cal"></canvas>
+            </div>
+            <div class="glass-panel p-4" style="height:320px;position:relative;">
+              <canvas id="chart-weight"></canvas>
+            </div>
+          </div>`;
+        setTimeout(renderCharts, 150);
+      }
+    }
     if (tabName === 'social') renderSocial();
   }
 }
@@ -1343,23 +1359,19 @@ function ensureAnalyticsData() {
 }
 
 async function renderCharts() {
-  const calCtx = document.getElementById('caloriesChart')?.getContext('2d');
-  const weightCtx = document.getElementById('weightChart')?.getContext('2d');
-  if (!calCtx || !weightCtx) return;
+  const calCanvas = document.getElementById('chart-cal');
+  const weightCanvas = document.getElementById('chart-weight');
+  if (!calCanvas || !weightCanvas) { console.error('Canvas injection failed!'); return; }
 
-  if (window.chart1) window.chart1.destroy();
-  if (window.chart2) window.chart2.destroy();
+  if (window.chartC instanceof Chart) window.chartC.destroy();
+  if (window.chartW instanceof Chart) window.chartW.destroy();
 
-  const startWeight = parseFloat(userProfile?.weight) || 75;
+  const w = parseFloat(userProfile?.weight) || 75;
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-  window.chart1 = new Chart(calCtx, { type: 'bar', data: { labels, datasets: [{ label: 'Калории', data: [1800, 1900, 2000, 1700, 2100, 1850, 1900], backgroundColor: '#3b82f6' }] }, options: { maintainAspectRatio: false } });
+  window.chartC = new Chart(calCanvas, { type: 'bar', data: { labels, datasets: [{ label: 'Калории', data: [1800, 2000, 1900, 2100, 1850, 2200, 1950], backgroundColor: '#3b82f6' }] }, options: { maintainAspectRatio: false } });
 
-  window.chart2 = new Chart(weightCtx, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Вес (кг)', data: [startWeight, startWeight-0.2, startWeight-0.3, startWeight-0.5, startWeight-0.6, startWeight-0.8, startWeight-1], borderColor: '#ec4899', tension: 0.4 }] },
-    options: { maintainAspectRatio: false, scales: { y: { min: startWeight - 5, max: startWeight + 5 } } }
-  });
+  window.chartW = new Chart(weightCanvas, { type: 'line', data: { labels, datasets: [{ label: 'Вес (кг)', data: [w, w-0.2, w-0.3, w-0.5, w-0.6, w-0.8, w-1.0], borderColor: '#ec4899', tension: 0.4 }] }, options: { maintainAspectRatio: false, scales: { y: { min: w - 5, max: w + 5 } } } });
 }
 
 function _chartOptions(unit) {
