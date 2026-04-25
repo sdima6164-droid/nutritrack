@@ -421,7 +421,7 @@ function deleteEntry(index) {
 }
 
 /* ===== AI TIP MODAL ===== */
-function generateAITip() {
+async function generateAITip() {
   const entries = getDayLog(currentDate);
   const totals  = sumLog(entries);
   const targets = getTargets();
@@ -432,11 +432,53 @@ function generateAITip() {
   const cRatio  = targets.calories > 0 ? totals.calories / targets.calories : 0;
   const pRatio  = targets.proteins > 0 ? totals.proteins / targets.proteins : 0;
 
+  // Fetch girlfriend's live stats from Supabase
+  let gf = null;
+  try {
+    if (sbClient) {
+      const GF_EMAIL = 'kovallenkoan@gmail.com';
+      const { data: profs } = await sbClient
+        .from('user_profiles')
+        .select('user_id,name,streak,targetK')
+        .ilike('email', GF_EMAIL)
+        .limit(1);
+      if (profs && profs.length > 0) {
+        const p = profs[0];
+        const { data: day } = await sbClient
+          .from('user_data')
+          .select('state')
+          .eq('user_id', p.user_id)
+          .eq('date', todayStr())
+          .maybeSingle();
+        const gfEntries = day?.state?.entries || [];
+        const gfKcal    = gfEntries.reduce((s, e) => s + (e.calories || 0), 0);
+        const gfTargetK = p.targetK || 2000;
+        gf = {
+          streak:    p.streak || 0,
+          kcalRatio: gfTargetK > 0 ? gfKcal / gfTargetK : 0,
+          kcalPct:   Math.min(100, Math.round(gfKcal / gfTargetK * 100)),
+        };
+      }
+    }
+  } catch (_) { /* silent — tips degrade gracefully without GF data */ }
+
   if (entries.length === 0) {
+    if (gf && gf.streak > streak) {
+      return { icon: '🔥', title: 'Даже не начал!', text: `Стрик твоей девушки — ${gf.streak} дней. Попробуй её догнать, если кишка не тонка! 🔥` };
+    }
     return { icon: '🍽️', title: 'Начни день правильно!', text: 'Ты ещё ничего не записал сегодня. Начни с завтрака — это запускает метаболизм на весь день!' };
   }
   if (wRatio < 0.3) {
+    if (gf) {
+      return { icon: '💧', title: 'Пей воду!', text: 'Если не выпьешь воды сейчас, я расскажу твоей девушке, что ты ел печеньки втихаря. Шучу (или нет). Пей! 💧' };
+    }
     return { icon: '💧', title: 'Срочно пить воду!', text: 'Пора выпить стакан воды — обезвоживание снижает фокус и энергию на 20%!' };
+  }
+  if (gf && gf.kcalRatio > cRatio + 0.15) {
+    return { icon: '💪', title: 'Тебя обходят!', text: `Слушай, твоя девушка тебя обходит! Она уже закрыла ${gf.kcalPct}% нормы, а ты всё ещё диван давишь? Поднажми! 💪` };
+  }
+  if (gf && gf.streak > streak + 2) {
+    return { icon: '🔥', title: 'Стрик под угрозой!', text: `Стрик твоей девушки — ${gf.streak} дней. Попробуй её догнать, если кишка не тонка! 🔥` };
   }
   if (streak >= 7) {
     return { icon: '🔥', title: 'Ты огонь!', text: `Твой стрик — ${streak} дней! Не вздумай сдаваться сегодня — ты уже в топ-1% пользователей!` };
@@ -453,23 +495,26 @@ function generateAITip() {
   if (wRatio < 0.5) {
     return { icon: '💧', title: 'Не забывай про воду', text: 'Пора выпить стакан воды — обезвоживание снижает фокус и ухудшает самочувствие!' };
   }
+  if (gf && gf.kcalRatio >= 0.8 && cRatio < 0.5) {
+    return { icon: '🥗', title: 'Твоя девушка молодец!', text: `Твоя вторая половинка уже закрыла ${gf.kcalPct}% нормы. Пора подтягиваться — добавь нормальный приём пищи!` };
+  }
   if (cRatio < 0.3 && hour >= 16) {
     return { icon: '🥗', title: 'Не голодай!', text: 'К вечеру ты съел совсем мало. Слишком низкий калораж замедляет метаболизм — добавь полноценный приём пищи.' };
   }
   return { icon: '✅', title: 'Ты молодец!', text: 'Рацион сегодня сбалансирован. Так держать — стабильность важнее идеальных цифр!' };
 }
 
-function openAITipModal() {
-  const tip = generateAITip();
-  const content = document.getElementById('ai-tip-content');
-  if (content) {
-    content.innerHTML = `
-      <div class="ai-tip-icon-big">${tip.icon}</div>
-      <div class="ai-tip-title">${tip.title}</div>
-      <div class="ai-tip-text">${tip.text}</div>`;
-  }
+async function openAITipModal() {
   const overlay = document.getElementById('ai-modal-overlay');
-  if (overlay) overlay.classList.add('open');
+  const content = document.getElementById('ai-tip-content');
+  if (!overlay || !content) return;
+  content.innerHTML = '<div class="ai-tip-loading">⏳ Анализирую данные...</div>';
+  overlay.classList.add('open');
+  const tip = await generateAITip();
+  content.innerHTML = `
+    <div class="ai-tip-icon-big">${tip.icon}</div>
+    <div class="ai-tip-title">${tip.title}</div>
+    <div class="ai-tip-text">${tip.text}</div>`;
 }
 
 function closeAITipModal() {

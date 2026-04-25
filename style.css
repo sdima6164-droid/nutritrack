@@ -2295,3 +2295,9 @@ html.dark-theme .modal-close:hover { background: rgba(255,255,255,0.12); }
   transition: opacity 0.2s;
 }
 .ai-modal-btn:hover { opacity: 0.85; }
+.ai-tip-loading {
+  text-align: center;
+  padding: 32px 0;
+  font-size: 15px;
+  color: var(--text2);
+}
