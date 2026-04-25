@@ -1348,17 +1348,17 @@ async function renderCharts() {
   if (window.myCalChart) window.myCalChart.destroy();
   if (window.myWeightChart) window.myWeightChart.destroy();
 
-  const userWeight = parseFloat(userProfile?.weight) || 75;
+  const displayWeight = parseFloat(userProfile?.weight) || 75;
 
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-  const weightData = [userWeight, userWeight - 0.1, userWeight - 0.2, userWeight - 0.25, userWeight - 0.4, userWeight - 0.5, userWeight - 0.6];
+  const weightData = [displayWeight, displayWeight - 0.1, displayWeight - 0.2, displayWeight - 0.25, displayWeight - 0.4, displayWeight - 0.5, displayWeight - 0.6];
 
   window.myWeightChart = new Chart(weightCanvas, {
     type: 'line',
     data: { labels, datasets: [{ label: 'Прогноз веса (кг)', data: weightData, borderColor: '#ec4899', tension: 0.4 }] },
     options: {
       maintainAspectRatio: false,
-      scales: { y: { min: userWeight - 5, max: userWeight + 2, ticks: { stepSize: 1 } } }
+      scales: { y: { min: displayWeight - 5, max: displayWeight + 2, ticks: { stepSize: 1 } } }
     }
   });
 
