@@ -1340,20 +1340,16 @@ function ensureAnalyticsData() {
   pastDates.forEach((date, i) => setDayLog(date, mockDays[i] || mockDays[0]));
 }
 
-function renderAnalytics() {
+async function renderAnalytics() {
   ensureAnalyticsData();
 
-  const labels = [], kcalData = [], protData = [], fatData = [], carbData = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = shiftDate(todayStr(), -i);
+  const dates7 = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr(), -(6 - i)));
+  const labels = [], kcalData = [];
+  dates7.forEach(d => {
     const [, m, day] = d.split('-');
     labels.push(day + '.' + m);
-    const t = sumLog(getDayLog(d));
-    kcalData.push(t.calories);
-    protData.push(t.proteins);
-    fatData.push(t.fats);
-    carbData.push(t.carbs);
-  }
+    kcalData.push(sumLog(getDayLog(d)).calories);
+  });
 
   const filled = kcalData.filter(v => v > 0);
   const avg = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : 0;
@@ -1365,19 +1361,48 @@ function renderAnalytics() {
   const minEl = document.getElementById('an-min'); if (minEl) minEl.textContent = min || '—';
 
   const goalKcal = getTargets().calories;
-  _renderCalorieChart(labels, kcalData, goalKcal);
-  _renderMacroChart(labels, protData, fatData, carbData);
+
+  // Fetch girlfriend's calorie data from Supabase
+  let gfKcalData = Array(7).fill(null);
+  if (sbClient) {
+    try {
+      const { data: gfProf } = await sbClient
+        .from('user_profiles')
+        .select('user_id')
+        .ilike('email', 'kovallenkoan@gmail.com')
+        .single();
+      if (gfProf?.user_id) {
+        const { data: gfDays } = await sbClient
+          .from('user_data')
+          .select('date,state')
+          .eq('user_id', gfProf.user_id)
+          .in('date', dates7);
+        if (gfDays) {
+          const gfMap = {};
+          gfDays.forEach(d => { gfMap[d.date] = d.state; });
+          gfKcalData = dates7.map(d => {
+            const s = gfMap[d];
+            if (!s?.entries) return null;
+            return sumLog(s.entries).calories || null;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  _renderCalorieChart(labels, kcalData, goalKcal, gfKcalData);
+  _renderWeightChart(labels, kcalData, goalKcal);
 
   const predEl = document.getElementById('pred-text');
   if (predEl) {
     if (goalKcal > 0 && filled.length >= 3) {
       const diff = goalKcal - avg;
       const weekKg = round1(Math.abs(diff) * 7 / 7700);
+      const twoWeekKg = round1(weekKg * 2);
       if (diff > 50) {
-        const days = Math.round(5 * 7700 / diff);
-        predEl.textContent = `Дефицит ~${Math.round(diff)} ккал/день → теряете ≈ ${weekKg} кг в неделю. С таким темпом цели −5 кг достигнете примерно через ${days} дней. 💪`;
+        predEl.textContent = `🔥 С таким темпом вы обгоните цель на ${twoWeekKg} кг через 2 недели!`;
       } else if (diff < -50) {
-        predEl.textContent = `Профицит ~${Math.round(-diff)} ккал/день → набираете ≈ ${weekKg} кг в неделю. 🔥`;
+        predEl.textContent = `Профицит ~${Math.round(-diff)} ккал/день → набираете ≈ ${weekKg} кг в неделю. 📈`;
       } else {
         predEl.textContent = 'Рацион сбалансирован — вес остаётся стабильным. ✅';
       }
@@ -1422,23 +1447,42 @@ function _chartOptions(unit) {
   };
 }
 
-function _renderCalorieChart(labels, data, goalKcal) {
+function _renderCalorieChart(labels, data, goalKcal, gfData) {
   const canvas = document.getElementById('calorieChart');
   if (!canvas) return;
   if (chartCalorie) { chartCalorie.destroy(); chartCalorie = null; }
+  const opts = _chartOptions('ккал');
+  opts.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} ккал`;
   chartCalorie = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
       datasets: [
         {
-          label: 'Калории',
+          label: 'Я',
           data,
-          backgroundColor: 'rgba(192,122,255,0.22)',
-          borderColor: 'rgba(192,122,255,0.9)',
-          borderWidth: 2,
-          borderRadius: 10,
-          borderSkipped: false,
+          borderColor: 'rgba(69,207,255,0.9)',
+          backgroundColor: 'rgba(69,207,255,0.08)',
+          borderWidth: 2.5,
+          pointBackgroundColor: 'rgba(69,207,255,1)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.35,
+          fill: true,
+          spanGaps: false,
+        },
+        {
+          label: 'Подруга',
+          data: gfData || Array(labels.length).fill(null),
+          borderColor: 'rgba(255,105,180,0.9)',
+          backgroundColor: 'rgba(255,105,180,0.06)',
+          borderWidth: 2.5,
+          pointBackgroundColor: 'rgba(255,105,180,1)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.35,
+          fill: true,
+          spanGaps: true,
         },
         {
           type: 'line',
@@ -1452,25 +1496,44 @@ function _renderCalorieChart(labels, data, goalKcal) {
         },
       ],
     },
-    options: _chartOptions('ккал'),
+    options: opts,
   });
 }
 
-function _renderMacroChart(labels, prot, fat, carb) {
+function _renderWeightChart(labels, kcalData, goalKcal) {
   const canvas = document.getElementById('macroChart');
   if (!canvas) return;
   if (chartMacro) { chartMacro.destroy(); chartMacro = null; }
+
+  const currentWeight = parseFloat(getProfile().weight) || 75;
+  const goalEff = goalKcal > 0 ? goalKcal : 2000;
+  const totalDeficit = kcalData.reduce((sum, k) => sum + (k > 0 ? goalEff - k : 0), 0);
+  const startWeight = round1(currentWeight + totalDeficit / 7700);
+  const weightData = labels.map((_, i) => round1(startWeight + (currentWeight - startWeight) * i / 6));
+
+  const opts = _chartOptions('кг');
+  opts.plugins.tooltip.callbacks.label = ctx => ` Вес: ${ctx.parsed.y} кг`;
+
   chartMacro = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Белки', data: prot, backgroundColor: 'rgba(61,255,160,0.22)', borderColor: 'rgba(61,255,160,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
-        { label: 'Жиры',  data: fat,  backgroundColor: 'rgba(255,155,92,0.22)',  borderColor: 'rgba(255,155,92,0.85)',  borderWidth: 2, borderRadius: 6, borderSkipped: false },
-        { label: 'Углеводы', data: carb, backgroundColor: 'rgba(69,207,255,0.22)', borderColor: 'rgba(69,207,255,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+        {
+          label: 'Вес (тренд)',
+          data: weightData,
+          borderColor: 'rgba(61,255,160,0.9)',
+          backgroundColor: 'rgba(61,255,160,0.07)',
+          borderWidth: 2.5,
+          pointBackgroundColor: 'rgba(61,255,160,1)',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.4,
+          fill: true,
+        },
       ],
     },
-    options: _chartOptions('г'),
+    options: opts,
   });
 }
 
