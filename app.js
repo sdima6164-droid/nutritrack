@@ -187,8 +187,8 @@ let modalTab = 'search';
 let profileGoal = 'maintain';
 let chartWeek = null;
 let chartPie = null;
-let calChart = null;
-let weightChart = null;
+let chartCalorie = null;
+let chartMacro = null;
 let qrScanner = null;
 
 /* ===== UTILS ===== */
@@ -312,36 +312,18 @@ function sumLog(entries) {
 }
 
 /* ===== TABS ===== */
-function showTab(tabName) {
-  currentTab = tabName;
-  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const activeTab = document.getElementById(tabName + '-tab');
-  if (activeTab) {
-    activeTab.style.display = 'block';
-    document.getElementById('nav-' + tabName)?.classList.add('active');
-    if (tabName === 'diary') renderDiary();
-    if (tabName === 'profile') renderProfile();
-    if (tabName === 'nutri') renderNutri();
-    if (tabName === 'analytics') {
-      const analyticsRoot = document.getElementById('analytics-tab');
-      if (analyticsRoot) {
-        analyticsRoot.style.display = 'block';
-        analyticsRoot.innerHTML = `
-          <div class="p-4 overflow-y-auto" style="max-height:80vh;">
-            <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;color:#fff;">📈 Аналитика</h2>
-            <div class="glass-panel p-4 mb-4" style="height:320px;position:relative;">
-              <canvas id="chart-cal"></canvas>
-            </div>
-            <div class="glass-panel p-4" style="height:320px;position:relative;">
-              <canvas id="chart-weight"></canvas>
-            </div>
-          </div>`;
-        setTimeout(renderCharts, 150);
-      }
-    }
-    if (tabName === 'social') renderSocial();
-  }
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+
+  if (tab === 'diary') renderDiary();
+  if (tab === 'profile') renderProfile();
+  if (tab === 'nutri') renderNutri();
+  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'social') renderSocial();
 }
 
 /* ===== DIARY PAGE ===== */
@@ -1358,20 +1340,32 @@ function ensureAnalyticsData() {
   pastDates.forEach((date, i) => setDayLog(date, mockDays[i] || mockDays[0]));
 }
 
-async function renderCharts() {
-  const calCanvas = document.getElementById('chart-cal');
-  const weightCanvas = document.getElementById('chart-weight');
-  if (!calCanvas || !weightCanvas) { console.error('Canvas injection failed!'); return; }
+function renderAnalytics() {
+  ensureAnalyticsData();
 
-  if (window.chartC instanceof Chart) window.chartC.destroy();
-  if (window.chartW instanceof Chart) window.chartW.destroy();
+  const labels = [], kcalData = [], protData = [], fatData = [], carbData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = shiftDate(todayStr(), -i);
+    const [, m, day] = d.split('-');
+    labels.push(day + '.' + m);
+    const t = sumLog(getDayLog(d));
+    kcalData.push(t.calories);
+    protData.push(t.proteins);
+    fatData.push(t.fats);
+    carbData.push(t.carbs);
+  }
 
-  const w = parseFloat(userProfile?.weight) || 75;
-  const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const filled = kcalData.filter(v => v > 0);
+  const avg = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : 0;
+  const max = filled.length ? Math.max(...filled) : 0;
+  const min = filled.length ? Math.min(...filled) : 0;
 
-  window.chartC = new Chart(calCanvas, { type: 'bar', data: { labels, datasets: [{ label: 'Калории', data: [1800, 2000, 1900, 2100, 1850, 2200, 1950], backgroundColor: '#3b82f6' }] }, options: { maintainAspectRatio: false } });
+  const avgEl = document.getElementById('an-avg'); if (avgEl) avgEl.textContent = avg || '—';
+  const maxEl = document.getElementById('an-max'); if (maxEl) maxEl.textContent = max || '—';
+  const minEl = document.getElementById('an-min'); if (minEl) minEl.textContent = min || '—';
 
-  window.chartW = new Chart(weightCanvas, { type: 'line', data: { labels, datasets: [{ label: 'Вес (кг)', data: [w, w-0.2, w-0.3, w-0.5, w-0.6, w-0.8, w-1.0], borderColor: '#ec4899', tension: 0.4 }] }, options: { maintainAspectRatio: false, scales: { y: { min: w - 5, max: w + 5 } } } });
+  _renderCalorieChart(labels, kcalData, getTargets().calories);
+  _renderMacroChart(labels, protData, fatData, carbData);
 }
 
 function _chartOptions(unit) {
@@ -1407,42 +1401,23 @@ function _chartOptions(unit) {
   };
 }
 
-function _renderCalorieChart(labels, data, goalKcal, gfData) {
-  const canvas = document.getElementById('caloriesChart');
+function _renderCalorieChart(labels, data, goalKcal) {
+  const canvas = document.getElementById('calorieChart');
   if (!canvas) return;
-  if (calChart) { calChart.destroy(); calChart = null; }
-  const opts = _chartOptions('ккал');
-  opts.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} ккал`;
-  calChart = new Chart(canvas.getContext('2d'), {
-    type: 'line',
+  if (chartCalorie) { chartCalorie.destroy(); chartCalorie = null; }
+  chartCalorie = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
     data: {
       labels,
       datasets: [
         {
-          label: 'Я',
+          label: 'Калории',
           data,
-          borderColor: 'rgba(69,207,255,0.9)',
-          backgroundColor: 'rgba(69,207,255,0.08)',
-          borderWidth: 2.5,
-          pointBackgroundColor: 'rgba(69,207,255,1)',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          tension: 0.35,
-          fill: true,
-          spanGaps: false,
-        },
-        {
-          label: 'Подруга',
-          data: (gfData && gfData.length) ? gfData : Array(labels.length).fill(null),
-          borderColor: 'rgba(255,105,180,0.9)',
-          backgroundColor: 'rgba(255,105,180,0.06)',
-          borderWidth: 2.5,
-          pointBackgroundColor: 'rgba(255,105,180,1)',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          tension: 0.35,
-          fill: true,
-          spanGaps: true,
+          backgroundColor: 'rgba(192,122,255,0.22)',
+          borderColor: 'rgba(192,122,255,0.9)',
+          borderWidth: 2,
+          borderRadius: 10,
+          borderSkipped: false,
         },
         {
           type: 'line',
@@ -1456,50 +1431,25 @@ function _renderCalorieChart(labels, data, goalKcal, gfData) {
         },
       ],
     },
-    options: opts,
+    options: _chartOptions('ккал'),
   });
 }
 
-function _renderWeightChart(labels, kcalData, goalKcal) {
-  const canvas = document.getElementById('weightChart');
+function _renderMacroChart(labels, prot, fat, carb) {
+  const canvas = document.getElementById('macroChart');
   if (!canvas) return;
-  if (weightChart) { weightChart.destroy(); weightChart = null; }
-
-  const startWeight = parseFloat(getProfile().weight) || 75;
-  console.log("Current Weight used for chart:", startWeight);
-  const goalEff = goalKcal > 0 ? goalKcal : 2000;
-  const filled = kcalData.filter(v => v > 0);
-  const avgKcal = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : goalEff;
-  const rawEnd = startWeight - (goalEff - avgKcal) * 7 / 7700;
-  const endWeight = round1(Math.max(startWeight - 5, Math.min(startWeight + 5, rawEnd)));
-  const weightData = labels.map((_, i) => round1(startWeight + (endWeight - startWeight) * i / 6));
-
-  const opts = _chartOptions('кг');
-  opts.plugins.tooltip.callbacks.label = ctx => ` Вес: ${ctx.parsed.y} кг`;
-  opts.scales.y.beginAtZero = false;
-  opts.scales.y.min = startWeight - 2;
-  opts.scales.y.max = startWeight + 2;
-
-  weightChart = new Chart(canvas.getContext('2d'), {
-    type: 'line',
+  if (chartMacro) { chartMacro.destroy(); chartMacro = null; }
+  chartMacro = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
     data: {
       labels,
       datasets: [
-        {
-          label: 'Вес (тренд)',
-          data: weightData,
-          borderColor: 'rgba(61,255,160,0.9)',
-          backgroundColor: 'rgba(61,255,160,0.07)',
-          borderWidth: 2.5,
-          pointBackgroundColor: 'rgba(61,255,160,1)',
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: 0.4,
-          fill: true,
-        },
+        { label: 'Белки', data: prot, backgroundColor: 'rgba(61,255,160,0.22)', borderColor: 'rgba(61,255,160,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
+        { label: 'Жиры',  data: fat,  backgroundColor: 'rgba(255,155,92,0.22)',  borderColor: 'rgba(255,155,92,0.85)',  borderWidth: 2, borderRadius: 6, borderSkipped: false },
+        { label: 'Углеводы', data: carb, backgroundColor: 'rgba(69,207,255,0.22)', borderColor: 'rgba(69,207,255,0.85)', borderWidth: 2, borderRadius: 6, borderSkipped: false },
       ],
     },
-    options: opts,
+    options: _chartOptions('г'),
   });
 }
 
@@ -1659,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (vb) vb.hidden = true;
   }
 
-  showTab('diary');
+  switchTab('diary');
 
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
