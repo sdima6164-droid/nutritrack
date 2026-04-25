@@ -1509,18 +1509,20 @@ function _renderWeightChart(labels, kcalData, goalKcal) {
   if (!canvas) return;
   if (weightChart) { weightChart.destroy(); weightChart = null; }
 
-  const currentWeight = parseFloat(getProfile().weight) || 80;
+  const startWeight = parseFloat(getProfile().weight) || 75;
+  console.log("Current Weight used for chart:", startWeight);
   const goalEff = goalKcal > 0 ? goalKcal : 2000;
   const filled = kcalData.filter(v => v > 0);
   const avgKcal = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : goalEff;
-  const endWeight = round1(currentWeight - (goalEff - avgKcal) * 7 / 7700);
-  const weightData = labels.map((_, i) => round1(currentWeight + (endWeight - currentWeight) * i / 6));
+  const rawEnd = startWeight - (goalEff - avgKcal) * 7 / 7700;
+  const endWeight = round1(Math.max(startWeight - 5, Math.min(startWeight + 5, rawEnd)));
+  const weightData = labels.map((_, i) => round1(startWeight + (endWeight - startWeight) * i / 6));
 
   const opts = _chartOptions('кг');
   opts.plugins.tooltip.callbacks.label = ctx => ` Вес: ${ctx.parsed.y} кг`;
   opts.scales.y.beginAtZero = false;
-  opts.scales.y.suggestedMin = Math.min(currentWeight, endWeight) - 3;
-  opts.scales.y.suggestedMax = Math.max(currentWeight, endWeight) + 3;
+  opts.scales.y.min = startWeight - 2;
+  opts.scales.y.max = startWeight + 2;
 
   weightChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
