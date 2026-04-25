@@ -133,6 +133,15 @@
       <div class="sa-text" id="sa-text">Анализирую твой рацион…</div>
     </div>
 
+    <button type="button" class="ai-tip-card" id="ai-tip-card" onclick="openAITipModal()" aria-label="Получить совет от ИИ">
+      <span class="ai-tip-card-icon" aria-hidden="true">✨</span>
+      <div class="ai-tip-card-body">
+        <div class="ai-tip-card-title">Совет от ИИ</div>
+        <div class="ai-tip-card-sub">Персональная рекомендация</div>
+      </div>
+      <span class="ai-tip-card-arrow" aria-hidden="true">›</span>
+    </button>
+
     <button type="button" class="add-btn" onclick="openModal()">
       <span class="btn-icon" aria-hidden="true">+</span> Добавить продукт
     </button>
@@ -575,6 +584,18 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ AI TIP MODAL ═══════════════ -->
+  <div class="ai-modal-overlay" id="ai-modal-overlay" role="dialog" aria-modal="true" aria-label="Совет от ИИ">
+    <div class="ai-modal">
+      <div class="ai-modal-header">
+        <div class="ai-modal-title">✨ Совет от ИИ</div>
+        <button type="button" class="ai-modal-close" onclick="closeAITipModal()" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="ai-modal-body" id="ai-tip-content"></div>
+      <button type="button" class="ai-modal-btn" onclick="closeAITipModal()">Понял, спасибо! 👍</button>
     </div>
   </div>
 

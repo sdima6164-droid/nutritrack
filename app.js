@@ -420,6 +420,63 @@ function deleteEntry(index) {
   syncToCloud();
 }
 
+/* ===== AI TIP MODAL ===== */
+function generateAITip() {
+  const entries = getDayLog(currentDate);
+  const totals  = sumLog(entries);
+  const targets = getTargets();
+  const waterMl = getWater(currentDate);
+  const wRatio  = waterMl / WATER_GOAL;
+  const streak  = (JSON.parse(localStorage.getItem('bju_streak') || 'null') || {}).count || 0;
+  const hour    = new Date().getHours();
+  const cRatio  = targets.calories > 0 ? totals.calories / targets.calories : 0;
+  const pRatio  = targets.proteins > 0 ? totals.proteins / targets.proteins : 0;
+
+  if (entries.length === 0) {
+    return { icon: '🍽️', title: 'Начни день правильно!', text: 'Ты ещё ничего не записал сегодня. Начни с завтрака — это запускает метаболизм на весь день!' };
+  }
+  if (wRatio < 0.3) {
+    return { icon: '💧', title: 'Срочно пить воду!', text: 'Пора выпить стакан воды — обезвоживание снижает фокус и энергию на 20%!' };
+  }
+  if (streak >= 7) {
+    return { icon: '🔥', title: 'Ты огонь!', text: `Твой стрик — ${streak} дней! Не вздумай сдаваться сегодня — ты уже в топ-1% пользователей!` };
+  }
+  if (streak >= 3) {
+    return { icon: '🔥', title: 'Отличная серия!', text: `Твой стрик — ${streak} дней! Ещё немного — и привычка закрепится навсегда.` };
+  }
+  if (cRatio >= 0.9) {
+    return { icon: '⚡', title: 'Калории почти исчерпаны', text: 'Ты близко к дневной норме. Остаток дня лучше закрыть чем-то лёгким: салат, овощи, белок.' };
+  }
+  if (pRatio < 0.4 && hour >= 14) {
+    return { icon: '💪', title: 'Добавь белка!', text: 'Вторая половина дня, а белка маловато. Творог, яйца или курица — идеальный перекус для мышц.' };
+  }
+  if (wRatio < 0.5) {
+    return { icon: '💧', title: 'Не забывай про воду', text: 'Пора выпить стакан воды — обезвоживание снижает фокус и ухудшает самочувствие!' };
+  }
+  if (cRatio < 0.3 && hour >= 16) {
+    return { icon: '🥗', title: 'Не голодай!', text: 'К вечеру ты съел совсем мало. Слишком низкий калораж замедляет метаболизм — добавь полноценный приём пищи.' };
+  }
+  return { icon: '✅', title: 'Ты молодец!', text: 'Рацион сегодня сбалансирован. Так держать — стабильность важнее идеальных цифр!' };
+}
+
+function openAITipModal() {
+  const tip = generateAITip();
+  const content = document.getElementById('ai-tip-content');
+  if (content) {
+    content.innerHTML = `
+      <div class="ai-tip-icon-big">${tip.icon}</div>
+      <div class="ai-tip-title">${tip.title}</div>
+      <div class="ai-tip-text">${tip.text}</div>`;
+  }
+  const overlay = document.getElementById('ai-modal-overlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+function closeAITipModal() {
+  const overlay = document.getElementById('ai-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
 /* ===== MODAL ===== */
 function openModal() {
   selectedFood = null;
@@ -1511,6 +1568,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  document.getElementById('ai-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('ai-modal-overlay')) closeAITipModal();
   });
 
 });
