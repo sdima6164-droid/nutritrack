@@ -322,7 +322,7 @@ function switchTab(tab) {
   if (tab === 'diary') renderDiary();
   if (tab === 'profile') renderProfile();
   if (tab === 'nutri') renderNutri();
-  if (tab === 'analytics') setTimeout(renderCharts, 50);
+  if (tab === 'analytics') requestAnimationFrame(() => requestAnimationFrame(renderCharts));
   if (tab === 'social') renderSocial();
 }
 
@@ -1341,6 +1341,8 @@ function ensureAnalyticsData() {
 }
 
 async function renderCharts() {
+  const calCanvas = document.getElementById('caloriesChart');
+  if (!calCanvas) { console.warn('Canvas not found yet, retrying...'); return; }
   ensureAnalyticsData();
 
   const dates7 = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr(), -(6 - i)));
@@ -1363,7 +1365,7 @@ async function renderCharts() {
   const goalKcal = getTargets().calories;
 
   // Fetch girlfriend's calorie data from Supabase
-  let gfKcalData = Array(7).fill(null);
+  let gfKcalData = [];
   if (sbClient) {
     try {
       const { data: gfProf } = await sbClient
@@ -1377,9 +1379,10 @@ async function renderCharts() {
           .select('date,state')
           .eq('user_id', gfProf.user_id)
           .in('date', dates7);
-        if (gfDays) {
+        const friendLogs = gfDays || [];
+        if (friendLogs.length) {
           const gfMap = {};
-          gfDays.forEach(d => { gfMap[d.date] = d.state; });
+          friendLogs.forEach(d => { gfMap[d.date] = d.state; });
           gfKcalData = dates7.map(d => {
             const s = gfMap[d];
             if (!s?.entries) return null;
@@ -1473,7 +1476,7 @@ function _renderCalorieChart(labels, data, goalKcal, gfData) {
         },
         {
           label: 'Подруга',
-          data: gfData || Array(labels.length).fill(null),
+          data: (gfData && gfData.length) ? gfData : Array(labels.length).fill(null),
           borderColor: 'rgba(255,105,180,0.9)',
           backgroundColor: 'rgba(255,105,180,0.06)',
           borderWidth: 2.5,
