@@ -1341,8 +1341,9 @@ function ensureAnalyticsData() {
 }
 
 async function renderCharts() {
+  console.log('DEBUG: Searching for canvas...', document.getElementById('caloriesChart'));
   const calCanvas = document.getElementById('caloriesChart');
-  if (!calCanvas) { console.warn('Canvas not found yet, retrying...'); return; }
+  if (!calCanvas) { console.warn('Canvas not found yet, retrying...'); setTimeout(renderCharts, 100); return; }
   ensureAnalyticsData();
 
   const dates7 = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr(), -(6 - i)));
