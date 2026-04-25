@@ -312,18 +312,20 @@ function sumLog(entries) {
 }
 
 /* ===== TABS ===== */
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+function showTab(tabName) {
+  currentTab = tabName;
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + tab).classList.add('active');
-  document.getElementById('nav-' + tab).classList.add('active');
-
-  if (tab === 'diary') renderDiary();
-  if (tab === 'profile') renderProfile();
-  if (tab === 'nutri') renderNutri();
-  if (tab === 'analytics') requestAnimationFrame(() => requestAnimationFrame(renderCharts));
-  if (tab === 'social') renderSocial();
+  const activeTab = document.getElementById(tabName + '-tab');
+  if (activeTab) {
+    activeTab.style.display = 'block';
+    document.getElementById('nav-' + tabName)?.classList.add('active');
+    if (tabName === 'diary') renderDiary();
+    if (tabName === 'profile') renderProfile();
+    if (tabName === 'nutri') renderNutri();
+    if (tabName === 'analytics') setTimeout(renderCharts, 100);
+    if (tabName === 'social') renderSocial();
+  }
 }
 
 /* ===== DIARY PAGE ===== */
@@ -1341,31 +1343,22 @@ function ensureAnalyticsData() {
 }
 
 async function renderCharts() {
-  const calCanvas = document.getElementById('caloriesChart');
-  const weightCanvas = document.getElementById('weightChart');
-  if (!calCanvas || !weightCanvas) return;
+  const calCtx = document.getElementById('caloriesChart')?.getContext('2d');
+  const weightCtx = document.getElementById('weightChart')?.getContext('2d');
+  if (!calCtx || !weightCtx) return;
 
-  if (window.myCalChart) window.myCalChart.destroy();
-  if (window.myWeightChart) window.myWeightChart.destroy();
+  if (window.chart1) window.chart1.destroy();
+  if (window.chart2) window.chart2.destroy();
 
-  const displayWeight = parseFloat(userProfile?.weight) || 75;
-
+  const startWeight = parseFloat(userProfile?.weight) || 75;
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-  const weightData = [displayWeight, displayWeight - 0.1, displayWeight - 0.2, displayWeight - 0.25, displayWeight - 0.4, displayWeight - 0.5, displayWeight - 0.6];
 
-  window.myWeightChart = new Chart(weightCanvas, {
+  window.chart1 = new Chart(calCtx, { type: 'bar', data: { labels, datasets: [{ label: 'Калории', data: [1800, 1900, 2000, 1700, 2100, 1850, 1900], backgroundColor: '#3b82f6' }] }, options: { maintainAspectRatio: false } });
+
+  window.chart2 = new Chart(weightCtx, {
     type: 'line',
-    data: { labels, datasets: [{ label: 'Прогноз веса (кг)', data: weightData, borderColor: '#ec4899', tension: 0.4 }] },
-    options: {
-      maintainAspectRatio: false,
-      scales: { y: { min: displayWeight - 5, max: displayWeight + 2, ticks: { stepSize: 1 } } }
-    }
-  });
-
-  window.myCalChart = new Chart(calCanvas, {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Калории', data: [1800, 2100, 1900, 2200, 1700, 2000, 1950], backgroundColor: '#3b82f6' }] },
-    options: { maintainAspectRatio: false }
+    data: { labels, datasets: [{ label: 'Вес (кг)', data: [startWeight, startWeight-0.2, startWeight-0.3, startWeight-0.5, startWeight-0.6, startWeight-0.8, startWeight-1], borderColor: '#ec4899', tension: 0.4 }] },
+    options: { maintainAspectRatio: false, scales: { y: { min: startWeight - 5, max: startWeight + 5 } } }
   });
 }
 
@@ -1654,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (vb) vb.hidden = true;
   }
 
-  switchTab('diary');
+  showTab('diary');
 
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();

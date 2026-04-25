@@ -31,7 +31,7 @@
   </div>
 
   <!-- ═══════════════ ДНЕВНИК ═══════════════ -->
-  <div id="page-diary" class="page active">
+  <div id="diary-tab" class="page tab-content">
 
     <header class="page-header">
       <div>
@@ -175,7 +175,7 @@
   </div>
 
   <!-- ═══════════════ ПРОФИЛЬ ═══════════════ -->
-  <div id="page-profile" class="page">
+  <div id="profile-tab" class="page tab-content">
 
     <header class="page-header">
       <div class="page-title">Профиль</div>
@@ -341,7 +341,7 @@
   </div>
 
   <!-- ═══════════════ НУТРИЦИОЛОГ ═══════════════ -->
-  <div id="page-nutri" class="page">
+  <div id="nutri-tab" class="page tab-content">
 
     <header class="page-header">
       <div class="page-title">Нутрициолог</div>
@@ -375,50 +375,20 @@
   </div>
 
   <!-- ═══════════════ АНАЛИТИКА ═══════════════ -->
-  <div id="page-analytics" class="page">
-
-    <header class="page-header">
-      <div>
-        <div class="page-title">Аналитика</div>
-        <p class="page-sub">За последние 7 дней</p>
-      </div>
-    </header>
-
-    <div class="an-stats-grid">
-      <div class="an-stat">
-        <div class="an-val" id="an-avg">—</div>
-        <div class="an-label">ккал в среднем</div>
-      </div>
-      <div class="an-stat">
-        <div class="an-val" id="an-max">—</div>
-        <div class="an-label">максимум</div>
-      </div>
-      <div class="an-stat">
-        <div class="an-val" id="an-min">—</div>
-        <div class="an-label">минимум</div>
-      </div>
-    </div>
-
-    <div id="analytics-content" class="p-4">
-      <div style="height: 300px; width: 100%; margin-bottom: 20px;" class="glass-panel p-2">
+  <div id="analytics-tab" class="page tab-content" style="display:none;">
+    <div class="p-4 overflow-y-auto" style="max-height: 80vh;">
+      <h2 class="text-xl font-bold mb-4 text-white">Аналитика прогресса</h2>
+      <div class="glass-panel p-4 mb-4" style="height: 320px; position: relative;">
         <canvas id="caloriesChart"></canvas>
       </div>
-      <div style="height: 300px; width: 100%;" class="glass-panel p-2">
+      <div class="glass-panel p-4" style="height: 320px; position: relative;">
         <canvas id="weightChart"></canvas>
       </div>
     </div>
-
-    <p class="section-title">Прогноз веса</p>
-    <div class="pred-card">
-      <div class="pred-text" id="pred-text">Добавьте записи для расчёта</div>
-    </div>
-
-    <div class="spacer-sm"></div>
-
   </div>
 
   <!-- ═══════════════ СОЦИАЛЬНЫЙ ХАБ ═══════════════ -->
-  <div id="page-social" class="page">
+  <div id="social-tab" class="page tab-content">
 
     <header class="page-header">
       <div class="page-title">Друзья</div>
@@ -439,23 +409,23 @@
 
   <!-- ═══════════════ НАВИГАЦИЯ ═══════════════ -->
   <nav class="bottom-nav" aria-label="Основная навигация">
-    <button type="button" class="nav-btn active" id="nav-diary" onclick="switchTab('diary')" aria-current="page">
+    <button type="button" class="nav-btn active" id="nav-diary" onclick="showTab('diary')" aria-current="page">
       <span class="icon" aria-hidden="true">📋</span>
       <span>Дневник</span>
     </button>
-    <button type="button" class="nav-btn" id="nav-analytics" onclick="switchTab('analytics')">
+    <button type="button" class="nav-btn" id="nav-analytics" onclick="showTab('analytics')">
       <span class="icon" aria-hidden="true">📊</span>
       <span>Аналитика</span>
     </button>
-    <button type="button" class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
+    <button type="button" class="nav-btn" id="nav-profile" onclick="showTab('profile')">
       <span class="icon" aria-hidden="true">👤</span>
       <span>Профиль</span>
     </button>
-    <button type="button" class="nav-btn" id="nav-nutri" onclick="switchTab('nutri')">
+    <button type="button" class="nav-btn" id="nav-nutri" onclick="showTab('nutri')">
       <span class="icon" aria-hidden="true">🥗</span>
       <span>Нутрициолог</span>
     </button>
-    <button type="button" class="nav-btn" id="nav-social" onclick="switchTab('social')">
+    <button type="button" class="nav-btn" id="nav-social" onclick="showTab('social')">
       <span class="icon" aria-hidden="true">👥</span>
       <span>Друзья</span>
     </button>
