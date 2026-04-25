@@ -187,8 +187,8 @@ let modalTab = 'search';
 let profileGoal = 'maintain';
 let chartWeek = null;
 let chartPie = null;
-let chartCalorie = null;
-let chartMacro = null;
+let calChart = null;
+let weightChart = null;
 let qrScanner = null;
 
 /* ===== UTILS ===== */
@@ -322,7 +322,7 @@ function switchTab(tab) {
   if (tab === 'diary') renderDiary();
   if (tab === 'profile') renderProfile();
   if (tab === 'nutri') renderNutri();
-  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'analytics') setTimeout(renderCharts, 50);
   if (tab === 'social') renderSocial();
 }
 
@@ -1340,7 +1340,7 @@ function ensureAnalyticsData() {
   pastDates.forEach((date, i) => setDayLog(date, mockDays[i] || mockDays[0]));
 }
 
-async function renderAnalytics() {
+async function renderCharts() {
   ensureAnalyticsData();
 
   const dates7 = Array.from({ length: 7 }, (_, i) => shiftDate(todayStr(), -(6 - i)));
@@ -1448,12 +1448,12 @@ function _chartOptions(unit) {
 }
 
 function _renderCalorieChart(labels, data, goalKcal, gfData) {
-  const canvas = document.getElementById('calorieChart');
+  const canvas = document.getElementById('caloriesChart');
   if (!canvas) return;
-  if (chartCalorie) { chartCalorie.destroy(); chartCalorie = null; }
+  if (calChart) { calChart.destroy(); calChart = null; }
   const opts = _chartOptions('ккал');
   opts.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} ккал`;
-  chartCalorie = new Chart(canvas.getContext('2d'), {
+  calChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
       labels,
@@ -1501,9 +1501,9 @@ function _renderCalorieChart(labels, data, goalKcal, gfData) {
 }
 
 function _renderWeightChart(labels, kcalData, goalKcal) {
-  const canvas = document.getElementById('macroChart');
+  const canvas = document.getElementById('weightChart');
   if (!canvas) return;
-  if (chartMacro) { chartMacro.destroy(); chartMacro = null; }
+  if (weightChart) { weightChart.destroy(); weightChart = null; }
 
   const currentWeight = parseFloat(getProfile().weight) || 75;
   const goalEff = goalKcal > 0 ? goalKcal : 2000;
@@ -1514,7 +1514,7 @@ function _renderWeightChart(labels, kcalData, goalKcal) {
   const opts = _chartOptions('кг');
   opts.plugins.tooltip.callbacks.label = ctx => ` Вес: ${ctx.parsed.y} кг`;
 
-  chartMacro = new Chart(canvas.getContext('2d'), {
+  weightChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
       labels,
