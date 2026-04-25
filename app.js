@@ -1588,7 +1588,7 @@ async function loadSocialData(user) {
       ? sbClient.from('user_data').select('user_id,state').in('user_id', friendIds).eq('date', today)
       : Promise.resolve({ data: [] }),
     friendIds.length > 0
-      ? sbClient.from('user_profiles').select('user_id,name,email,targetK,streak').in('user_id', friendIds)
+      ? sbClient.from('user_profiles').select('user_id,name,email,targetK,streak,water_goal').in('user_id', friendIds)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -1606,11 +1606,12 @@ async function loadSocialData(user) {
     const displayName = prof.name || prof.email || fid;
     const streak = prof.streak || 0;
     const water = typeof state.water === 'number' ? state.water : 0;
-    const waterPct = Math.min(100, Math.round(water / 2000 * 100));
     const entries = Array.isArray(state.entries) ? state.entries : [];
     const kcal = entries.reduce((s, e) => s + (e.calories || 0), 0);
     const targetK = prof.targetK || 2000;
     const kcalPct = Math.min(100, Math.round(kcal / targetK * 100));
+    const waterGoal = prof.water_goal || 2000;
+    const waterPct = Math.min(100, Math.round(water / waterGoal * 100));
 
     return `
       <div class="social-friend-card">
@@ -1623,11 +1624,11 @@ async function loadSocialData(user) {
           <div class="sfc-email">${escapeHtml(fEmail)}</div>
           <div class="sfc-bars">
             <div class="sfc-bar-row">
-              <span class="sfc-bar-label">💧 ${water} мл</span>
+              <span class="sfc-bar-label">💧 ${water}/${waterGoal} мл</span>
               <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-water" style="width:${waterPct}%"></div></div>
             </div>
             <div class="sfc-bar-row">
-              <span class="sfc-bar-label">🔥 ${kcal} ккал</span>
+              <span class="sfc-bar-label">🔥 ${kcal}/${targetK} ккал</span>
               <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-kcal" style="width:${kcalPct}%"></div></div>
             </div>
           </div>
