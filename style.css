@@ -1890,7 +1890,6 @@ textarea:focus-visible { outline: none; }
 .src-btns { display: flex; gap: 6px; flex-shrink: 0; }
 
 .src-btn {
-  width: 36px;
   height: 36px;
   border: none;
   border-radius: 10px;
@@ -1901,8 +1900,8 @@ textarea:focus-visible { outline: none; }
   justify-content: center;
 }
 
-.src-accept  { background: rgba(5,150,105,0.15); color: var(--protein); }
-.src-decline { background: rgba(220,38,38,0.12); color: var(--danger); font-size: 16px; font-weight: 700; }
+.src-accept  { background: rgba(5,150,105,0.15); color: var(--protein); padding: 0 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.src-decline { width: 36px; background: rgba(220,38,38,0.12); color: var(--danger); font-size: 16px; font-weight: 700; }
 
 .social-friend-card {
   display: flex;
@@ -1991,6 +1990,15 @@ textarea:focus-visible { outline: none; }
 
 .sfc-water { background: linear-gradient(90deg, #0284C7, #38BDF8); }
 .sfc-kcal  { background: linear-gradient(90deg, #7C3AED, #A855F7); }
+
+.glass-panel {
+  background: var(--card);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
 
 /* ===== DARK THEME ===== */
 html.dark-theme {

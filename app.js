@@ -1437,27 +1437,26 @@ function escapeHtml(str) {
 }
 
 function updateSocialUI(session) {
-  // Find the main wrapper of the Social tab (adjust ID if needed, e.g., 'social-view' or 'social-tab')
   const root = document.querySelector('#social-tab') || document.querySelector('[id*="social"]');
   if (!root) return;
 
   if (!session) {
-    root.innerHTML = '<div class="glass-panel p-4 text-center" style="margin-top:50px;"><h2>🔒 Авторизация</h2><p>Войдите, чтобы искать друзей</p></div>';
+    root.innerHTML = `
+      <div class="social-locked">
+        <div class="social-lock-icon">🔒</div>
+        <div class="social-lock-text">Войдите, чтобы<br>найти и добавить друзей</div>
+      </div>`;
   } else {
     root.innerHTML = `
-      <div class="glass-panel p-4" style="margin-top:20px;">
-        <h2 class="text-xl mb-4">Найти друга</h2>
-        <input type="email" id="friend-email-input" class="w-full p-2 mb-2 text-black rounded" placeholder="Введите email друга">
-        <button id="add-friend-btn" class="w-full bg-blue-500 text-white p-2 rounded font-bold">Добавить</button>
+      <div class="section-title">🔍 Найти друга</div>
+      <div class="social-search-wrap" style="margin-top:8px;">
+        <input type="email" id="friend-email-input" class="form-input" placeholder="Email друга...">
+        <button id="add-friend-btn" class="social-add-btn">+ Добавить</button>
       </div>
-      <div class="glass-panel p-4" style="margin-top:12px;">
-        <h2 class="text-xl mb-4">Входящие заявки</h2>
-        <div id="social-requests"><div class="social-loading">⏳</div></div>
-      </div>
-      <div class="glass-panel p-4" style="margin-top:12px;">
-        <h2 class="text-xl mb-4">Мои друзья</h2>
-        <div id="social-friends"><div class="social-loading">⏳</div></div>
-      </div>
+      <div class="section-title" style="margin-top:16px;">📩 Входящие заявки</div>
+      <div class="social-list" id="social-requests"><div class="social-loading">⏳</div></div>
+      <div class="section-title" style="margin-top:16px;">👥 Мои друзья</div>
+      <div class="social-list" id="social-friends"><div class="social-loading">⏳</div></div>
     `;
     setTimeout(() => {
       const btn = document.getElementById('add-friend-btn');
@@ -1545,7 +1544,7 @@ async function loadSocialData(user) {
 
   if (requestsEl) {
     if (!incoming || incoming.length === 0) {
-      requestsEl.innerHTML = '<div class="social-empty">Нет входящих заявок</div>';
+      requestsEl.innerHTML = '<div class="social-empty">Здесь пока пусто...</div>';
     } else {
       requestsEl.innerHTML = incoming.map(r => {
         const sender = senderMap[r.sender_id] || {};
@@ -1575,7 +1574,7 @@ async function loadSocialData(user) {
 
   if (!friendsEl) return;
   if (!accepted || accepted.length === 0) {
-    friendsEl.innerHTML = '<div class="social-empty">Пока нет друзей — добавьте их по email!</div>';
+    friendsEl.innerHTML = '<div class="social-empty">Здесь пока пусто...</div>';
     return;
   }
 
