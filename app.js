@@ -1364,8 +1364,29 @@ function renderAnalytics() {
   const maxEl = document.getElementById('an-max'); if (maxEl) maxEl.textContent = max || '—';
   const minEl = document.getElementById('an-min'); if (minEl) minEl.textContent = min || '—';
 
-  _renderCalorieChart(labels, kcalData, getTargets().calories);
+  const goalKcal = getTargets().calories;
+  _renderCalorieChart(labels, kcalData, goalKcal);
   _renderMacroChart(labels, protData, fatData, carbData);
+
+  const predEl = document.getElementById('pred-text');
+  if (predEl) {
+    if (goalKcal > 0 && filled.length >= 3) {
+      const diff = goalKcal - avg;
+      const weekKg = round1(Math.abs(diff) * 7 / 7700);
+      if (diff > 50) {
+        const days = Math.round(5 * 7700 / diff);
+        predEl.textContent = `Дефицит ~${Math.round(diff)} ккал/день → теряете ≈ ${weekKg} кг в неделю. С таким темпом цели −5 кг достигнете примерно через ${days} дней. 💪`;
+      } else if (diff < -50) {
+        predEl.textContent = `Профицит ~${Math.round(-diff)} ккал/день → набираете ≈ ${weekKg} кг в неделю. 🔥`;
+      } else {
+        predEl.textContent = 'Рацион сбалансирован — вес остаётся стабильным. ✅';
+      }
+    } else if (filled.length < 3) {
+      predEl.textContent = 'Нужно минимум 3 дня записей для расчёта прогноза.';
+    } else {
+      predEl.textContent = 'Установите цель по калориям в профиле для расчёта прогноза.';
+    }
+  }
 }
 
 function _chartOptions(unit) {
