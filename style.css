@@ -1163,4 +1163,10 @@ textarea:focus-visible { outline: none; }
 .mb-2 { margin-bottom: 8px; }
 .rounded { border-radius: var(--radius-sm); }
 .bg-blue-500 { background: var(--carb); }
+
+/* ===== SPLASH SCREEN ===== */
+#splash-screen{position:fixed;inset:0;z-index:10000;background:#0E1117;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s ease,visibility .4s ease;}
+#splash-screen.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+.splash-logo{font-size:72px;}
+.splash-title{font-family:'Inter',sans-serif;font-size:28px;font-weight:800;color:#fff;letter-spacing:-.5px;}
 .text-white  { color: #071A10; }

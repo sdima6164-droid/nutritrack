@@ -227,6 +227,17 @@ function showToast(msg) {
 
 function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
 
+function triggerHaptic(type = 'light') {
+  if (!navigator.vibrate) return;
+  if (type === 'medium') navigator.vibrate(40);
+  else if (type === 'success') navigator.vibrate([30, 50, 30]);
+  else navigator.vibrate(20);
+}
+
+let _apiResults = [];
+let _apiResultsQuery = '';
+let _searchTimer = null;
+
 /* ===== STORAGE ===== */
 function getDayLog(date) {
   return JSON.parse(localStorage.getItem('bju_log_' + date) || '[]');
@@ -278,6 +289,7 @@ function renderWater() {
 }
 
 function changeWater(delta) {
+  triggerHaptic('light');
   const prev = getWater(currentDate);
   const ml = Math.max(0, Math.min(WATER_GOAL, prev + delta));
   setWater(currentDate, ml);
@@ -412,6 +424,7 @@ function renderRing(id, type, val, target, label) {
 }
 
 function deleteEntry(index) {
+  triggerHaptic('medium');
   const entries = getDayLog(currentDate);
   entries.splice(index, 1);
   setDayLog(currentDate, entries);
@@ -566,22 +579,11 @@ function switchModalTab(tab) {
   if (activePanel) activePanel.removeAttribute('hidden');
 }
 
-function handleSearch() {
-  const q = document.getElementById('search-input').value.toLowerCase().trim();
+function _renderFoodResults(items, isApi = false) {
   const results = document.getElementById('food-results');
-  if (!q) { results.innerHTML = ''; return; }
-
-  const matches = FOODS_DB.filter(f =>
-    f.name.toLowerCase().includes(q) ||
-    (CATEGORY_NAMES[f.category] || '').toLowerCase().includes(q)
-  ).slice(0, 20);
-
-  if (matches.length === 0) {
-    results.innerHTML = `<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">Ничего не найдено. Попробуйте «ручной ввод».</div>`;
-    return;
-  }
-
-  results.innerHTML = matches.map(f => `
+  if (!results) return;
+  const banner = isApi ? `<div style="font-size:11px;color:var(--text2);padding:4px 8px 2px;text-align:center">🌐 Результаты из интернета</div>` : '';
+  results.innerHTML = banner + items.map(f => `
     <div class="food-result-item ${selectedFood && selectedFood.id === f.id ? 'selected' : ''}"
          onclick="selectFood(${f.id})">
       <div class="food-result-name">${f.name}</div>
@@ -590,9 +592,54 @@ function handleSearch() {
         <span class="rf">Ж ${f.fats}г</span>
         <span class="rc">У ${f.carbs}г</span>
         <span>${f.calories} ккал</span>
-        <span style="float:right;color:var(--text2)">${CATEGORY_NAMES[f.category] || ''}</span>
+        ${!isApi ? `<span style="float:right;color:var(--text2)">${CATEGORY_NAMES[f.category] || ''}</span>` : ''}
       </div>
     </div>`).join('');
+}
+
+async function _fetchFromAPI(q) {
+  const results = document.getElementById('food-results');
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=5`);
+    const data = await res.json();
+    const products = (data.products || []).filter(p => p.nutriments && p.product_name);
+    if (products.length === 0) {
+      if (results) results.innerHTML = `<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">Ничего не найдено. Попробуйте «ручной ввод».</div>`;
+      return;
+    }
+    _apiResultsQuery = q;
+    _apiResults = products.map((p, i) => ({
+      id: -1000 - i,
+      name: p.product_name,
+      category: 'api',
+      proteins: round1(p.nutriments['proteins_100g'] || 0),
+      fats: round1(p.nutriments['fat_100g'] || 0),
+      carbs: round1(p.nutriments['carbohydrates_100g'] || 0),
+      calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
+    }));
+    _renderFoodResults(_apiResults, true);
+  } catch(_) {
+    if (results) results.innerHTML = `<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">Ничего не найдено. Попробуйте «ручной ввод».</div>`;
+  }
+}
+
+function handleSearch() {
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const results = document.getElementById('food-results');
+  if (!q) { if (results) results.innerHTML = ''; _apiResults = []; _apiResultsQuery = ''; return; }
+
+  const matches = FOODS_DB.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    (CATEGORY_NAMES[f.category] || '').toLowerCase().includes(q)
+  ).slice(0, 20);
+
+  if (matches.length > 0) { _renderFoodResults(matches); return; }
+
+  if (_apiResultsQuery === q && _apiResults.length > 0) { _renderFoodResults(_apiResults, true); return; }
+
+  if (results) results.innerHTML = `<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px;">🔍 Ищем в интернете...</div>`;
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => _fetchFromAPI(q), 400);
 }
 
 function startVoiceSearch() {
@@ -624,7 +671,7 @@ function startVoiceSearch() {
 }
 
 function selectFood(id) {
-  selectedFood = FOODS_DB.find(f => f.id === id);
+  selectedFood = FOODS_DB.find(f => f.id === id) || _apiResults.find(f => f.id === id);
   handleSearch();
   updatePreview();
   document.getElementById('weight-input').focus();
@@ -657,6 +704,7 @@ function addFoodFromSearch() {
   const w = parseFloat(document.getElementById('weight-input').value);
   if (!w || w <= 0) { showToast('Укажите вес'); return; }
   const m = calcEntry(selectedFood, w);
+  triggerHaptic('medium');
   const entry = { name: selectedFood.name, weight: w, ...m };
   const entries = getDayLog(currentDate);
   entries.push(entry);
@@ -678,6 +726,7 @@ function addFoodManual() {
   if (!name) { showToast('Введите название'); return; }
   if (!weight || weight <= 0) { showToast('Укажите вес'); return; }
 
+  triggerHaptic('medium');
   const fakeFood = { proteins: p100, fats: f100, carbs: c100, calories: k100 };
   const m = calcEntry(fakeFood, weight);
   const entry = { name, weight, ...m };
@@ -1585,6 +1634,11 @@ function scheduleWaterCheck() {
 
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.classList.add('hidden');
+  }, 2000);
+
   initSupabase();
   restoreSession();
 
@@ -1628,26 +1682,35 @@ function escapeHtml(str) {
 }
 
 function updateSocialUI(session) {
-  const root = document.querySelector('#social-tab') || document.querySelector('[id*="social"]');
-  if (!root) return;
+  // Ищем контейнер для друзей. Если его нет — создаем принудительно внутри вкладки
+  let root = document.getElementById('social-tab-content');
+  if (!root) {
+    const page = document.getElementById('page-social');
+    if (!page) return; // Если вкладки вообще нет, выходим
+    root = document.createElement('div');
+    root.id = 'social-tab-content';
+    root.className = 'p-4 pb-24';
+    page.innerHTML = '';
+    page.appendChild(root);
+  }
 
   if (!session) {
     root.innerHTML = `
-      <div class="social-locked">
-        <div class="social-lock-icon">🔒</div>
-        <div class="social-lock-text">Войдите, чтобы<br>найти и добавить друзей</div>
+      <div class="social-locked" style="text-align:center; padding: 40px 20px;">
+        <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
+        <div style="color: #8888AA; font-size: 16px;">Войдите в профиль, чтобы<br>найти и добавить друзей</div>
       </div>`;
   } else {
     root.innerHTML = `
       <div class="section-title">🔍 Найти друга</div>
-      <div class="social-search-wrap" style="margin-top:8px;">
-        <input type="email" id="friend-email-input" class="form-input" placeholder="Email друга...">
-        <button id="add-friend-btn" class="social-add-btn">+ Добавить</button>
+      <div class="social-search-wrap" style="margin-top:8px; display:flex; gap:8px;">
+        <input type="email" id="friend-email-input" class="form-input" style="flex:1;" placeholder="Email друга...">
+        <button id="add-friend-btn" class="social-add-btn" style="padding: 0 16px; border-radius: 12px; background: #3b82f6; color: white;">+ Добавить</button>
       </div>
-      <div class="section-title" style="margin-top:16px;">📩 Входящие заявки</div>
-      <div class="social-list" id="social-requests"><div class="social-loading">⏳</div></div>
-      <div class="section-title" style="margin-top:16px;">👥 Мои друзья</div>
-      <div class="social-list" id="social-friends"><div class="social-loading">⏳</div></div>
+      <div class="section-title" style="margin-top:20px;">📩 Входящие заявки</div>
+      <div class="social-list" id="social-requests"><div class="social-loading">⏳ загрузка...</div></div>
+      <div class="section-title" style="margin-top:20px;">👥 Мои друзья</div>
+      <div class="social-list" id="social-friends"><div class="social-loading">⏳ загрузка...</div></div>
     `;
     setTimeout(() => {
       const btn = document.getElementById('add-friend-btn');
@@ -1658,8 +1721,32 @@ function updateSocialUI(session) {
 }
 
 async function renderSocial() {
-  updateSocialUI(null);
-  if (!sbClient) return;
+  // 1. Моментальная проверка кэша (чтобы сразу снять замок)
+  let session = null;
+  try {
+    const cached = localStorage.getItem('sb_session');
+    if (cached) session = JSON.parse(cached);
+  } catch (e) {}
+
+  updateSocialUI(session);
+
+  // 2. Фоновое обновление с сервера на случай изменений
+  if (sbClient) {
+    const { data } = await sbClient.auth.getSession();
+    if (data && data.session) {
+      session = data.session;
+      updateSocialUI(session);
+    }
+  }
+
+  // 3. Загрузка списка друзей
+  if (session && session.user) {
+    await loadSocialData(session.user);
+  }
+}
+
+async function renderSocial() {
+  if (!sbClient) { updateSocialUI(null); return; }
   const { data: { session } } = await sbClient.auth.getSession();
   updateSocialUI(session);
   if (session?.user) await loadSocialData(session.user);
@@ -1716,114 +1803,140 @@ async function declineFriendRequest(requestId) {
 async function loadSocialData(user) {
   const requestsEl = document.getElementById('social-requests');
   const friendsEl = document.getElementById('social-friends');
-  if (requestsEl) requestsEl.innerHTML = '<div class="social-loading">⏳</div>';
-  if (friendsEl) friendsEl.innerHTML = '<div class="social-loading">⏳</div>';
+  if (requestsEl) requestsEl.innerHTML = '<div class="social-loading" style="color:#aaa;">⏳ загрузка...</div>';
+  if (friendsEl) friendsEl.innerHTML = '<div class="social-loading" style="color:#aaa;">⏳ загрузка...</div>';
 
-  const { data: incoming } = await sbClient
-    .from('friendships')
-    .select('*')
-    .eq('receiver_id', user.id)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
-
-  const senderIds = (incoming || []).map(r => r.sender_id);
-  const { data: senderProfiles } = senderIds.length > 0
-    ? await sbClient.from('user_profiles').select('user_id,name,email').in('user_id', senderIds)
-    : { data: [] };
-  const senderMap = {};
-  (senderProfiles || []).forEach(p => { senderMap[p.user_id] = p; });
-
+  // --- 1. ЗАЯВКИ В ДРУЗЬЯ ---
+  const { data: incoming } = await sbClient.from('friendships').select('*').eq('receiver_id', user.id).eq('status', 'pending');
+  
   if (requestsEl) {
     if (!incoming || incoming.length === 0) {
-      requestsEl.innerHTML = '<div class="social-empty">Здесь пока пусто...</div>';
+      requestsEl.innerHTML = '<div class="social-empty" style="color:#8888AA; font-size:14px; text-align:center;">Нет новых заявок</div>';
     } else {
+      // Запрашиваем имена тех, кто кинул заявку
+      const senderIds = incoming.map(r => r.sender_id);
+      const { data: senders } = await sbClient.from('user_profiles').select('user_id,name,email').in('user_id', senderIds);
+      const sMap = {};
+      (senders || []).forEach(s => sMap[s.user_id] = s);
+      
       requestsEl.innerHTML = incoming.map(r => {
-        const sender = senderMap[r.sender_id] || {};
-        const displayName = sender.name || sender.email || r.sender_id;
-        const displayEmail = sender.email || '';
-        return `
-        <div class="social-req-card">
-          <div class="src-avatar">${escapeHtml(displayName.charAt(0).toUpperCase())}</div>
-          <div class="src-info">
-            <div class="src-name">${escapeHtml(displayName)}</div>
-            <div class="src-email">${escapeHtml(displayEmail)}</div>
-          </div>
-          <div class="src-btns">
-            <button class="src-btn src-accept" onclick="acceptFriendRequest('${r.id}')">Принять</button>
-            <button class="src-btn src-decline" onclick="declineFriendRequest('${r.id}')">✕</button>
+        const s = sMap[r.sender_id] || {};
+        const dName = s.name || s.email || 'Неизвестный';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px; margin-bottom:8px;">
+          <div style="color:#fff; font-size:14px;">${escapeHtml(dName)}</div>
+          <div>
+            <button onclick="acceptFriendRequest('${r.id}')" style="background:#3b82f6; color:#fff; border:none; padding:6px 12px; border-radius:8px; margin-right:4px;">Принять</button>
+            <button onclick="declineFriendRequest('${r.id}')" style="background:rgba(255,255,255,0.1); color:#fff; border:none; padding:6px 12px; border-radius:8px;">✕</button>
           </div>
         </div>`;
       }).join('');
     }
   }
 
-  const { data: accepted } = await sbClient
-    .from('friendships')
-    .select('*')
-    .eq('status', 'accepted')
-    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+  // --- 2. ДАННЫЕ И ШКАЛА ---
+  // Берем ДАТУ ИЗ ДНЕВНИКА (чтобы не было нулей после полуночи)
+  const targetDate = typeof currentDate !== 'undefined' ? currentDate : todayStr();
 
-  if (!friendsEl) return;
-  if (!accepted || accepted.length === 0) {
-    friendsEl.innerHTML = '<div class="social-empty">Здесь пока пусто...</div>';
-    return;
-  }
+  // Жестко читаем ТВОИ данные прямо из памяти телефона (чтобы 100% не было нулей)
+  let myKcal = 0, myTargetK = 2000, myWater = 0, myWaterGoal = 2000;
+  try {
+    const rawLog = localStorage.getItem('bju_log_' + targetDate);
+    const myEntries = rawLog ? JSON.parse(rawLog) : [];
+    myKcal = myEntries.reduce((sum, item) => sum + (item.calories || 0), 0);
+    myWater = parseInt(localStorage.getItem('bju_water_' + targetDate) || '0', 10);
+    
+    const rawProf = localStorage.getItem('bju_profile');
+    if (rawProf) myTargetK = JSON.parse(rawProf).targetK || 2000;
+  } catch(e) {}
 
-  const friendIds = accepted
-    .map(r => r.sender_id === user.id ? r.receiver_id : r.sender_id)
-    .filter(Boolean);
+  // Ищем принятых друзей
+  const { data: accepted } = await sbClient.from('friendships').select('*').eq('status', 'accepted').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+  const friendIds = (accepted || []).map(r => r.sender_id === user.id ? r.receiver_id : r.sender_id).filter(Boolean);
 
-  const today = todayStr();
-  const [todayRes, profilesRes] = await Promise.all([
-    friendIds.length > 0
-      ? sbClient.from('user_data').select('user_id,state').in('user_id', friendIds).eq('date', today)
-      : Promise.resolve({ data: [] }),
-    friendIds.length > 0
-      ? sbClient.from('user_profiles').select('user_id,name,email,targetK,streak,water_goal').in('user_id', friendIds)
-      : Promise.resolve({ data: [] }),
-  ]);
+  let fName = 'Партнёр (нет в друзьях)';
+  let fKcal = 0, fTargetK = 2000, fWater = 0, fWaterGoal = 2000;
+  let friendsHTML = '';
 
-  const todayMap = {};
-  (todayRes.data || []).forEach(d => { todayMap[d.user_id] = d.state || {}; });
-  const profMap = {};
-  (profilesRes.data || []).forEach(p => { profMap[p.user_id] = p; });
+  if (friendIds.length > 0) {
+    const fid = friendIds[0]; // Берем первого друга
+    const [todayRes, profRes] = await Promise.all([
+      sbClient.from('user_data').select('state').eq('user_id', fid).eq('date', targetDate).maybeSingle(),
+      sbClient.from('user_profiles').select('name,email,targetK,water_goal,streak').eq('user_id', fid).maybeSingle()
+    ]);
 
-  friendsEl.innerHTML = accepted.map(r => {
-    const fid = r.sender_id === user.id ? r.receiver_id : r.sender_id;
-    const prof = profMap[fid] || {};
-    const state = todayMap[fid] || {};
-
-    const fEmail = prof.email || '';
-    const displayName = prof.name || prof.email || fid;
-    const streak = prof.streak || 0;
-    const water = typeof state.water === 'number' ? state.water : 0;
-    const entries = Array.isArray(state.entries) ? state.entries : [];
-    const kcal = entries.reduce((s, e) => s + (e.calories || 0), 0);
-    const targetK = prof.targetK || 2000;
-    const kcalPct = Math.min(100, Math.round(kcal / targetK * 100));
-    const waterGoal = prof.water_goal || 2000;
-    const waterPct = Math.min(100, Math.round(water / waterGoal * 100));
-
-    return `
-      <div class="social-friend-card">
-        <div class="sfc-avatar">${escapeHtml(displayName.charAt(0).toUpperCase())}</div>
-        <div class="sfc-body">
-          <div class="sfc-top">
-            <div class="sfc-name">${escapeHtml(displayName)}</div>
-            <div class="sfc-streak${streak > 0 ? ' sfc-streak-active' : ''}">🔥 ${streak}</div>
-          </div>
-          <div class="sfc-email">${escapeHtml(fEmail)}</div>
-          <div class="sfc-bars">
-            <div class="sfc-bar-row">
-              <span class="sfc-bar-label">💧 ${water}/${waterGoal} мл</span>
-              <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-water" style="width:${waterPct}%"></div></div>
-            </div>
-            <div class="sfc-bar-row">
-              <span class="sfc-bar-label">🔥 ${kcal}/${targetK} ккал</span>
-              <div class="sfc-bar-track"><div class="sfc-bar-fill sfc-kcal" style="width:${kcalPct}%"></div></div>
-            </div>
+    if (profRes && profRes.data) {
+      fName = profRes.data.name || (profRes.data.email ? profRes.data.email.split('@')[0] : 'Партнёр');
+      fTargetK = profRes.data.targetK || 2000;
+      fWaterGoal = profRes.data.water_goal || 2000;
+      const streak = profRes.data.streak || 0;
+      
+      friendsHTML = `<div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; margin-bottom:8px; display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; background:#4f46e5; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; font-size:18px;">
+          ${escapeHtml(fName.charAt(0).toUpperCase())}
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <div style="color:#fff; font-weight:bold;">${escapeHtml(fName)}</div>
+            <div style="color:#fbbf24; font-size:12px;">🔥 ${streak}</div>
           </div>
         </div>
       </div>`;
-  }).join('');
+    }
+    if (todayRes && todayRes.data && todayRes.data.state) {
+      const state = todayRes.data.state;
+      fKcal = (state.entries || []).reduce((s, e) => s + (e.calories || 0), 0);
+      fWater = typeof state.water === 'number' ? state.water : 0;
+    }
+  }
+
+  // Считаем проценты (минимум 2%, чтобы было видно полоску)
+  const myKcalPct = Math.max(2, Math.min(100, Math.round((myKcal / myTargetK) * 100)));
+  const myWaterPct = Math.max(2, Math.min(100, Math.round((myWater / myWaterGoal) * 100)));
+  const fKcalPct = Math.max(2, Math.min(100, Math.round((fKcal / fTargetK) * 100)));
+  const fWaterPct = Math.max(2, Math.min(100, Math.round((fWater / fWaterGoal) * 100)));
+
+  // Рисуем интерфейс
+  const comparisonHTML = `
+  <div style="padding: 16px; margin-bottom: 24px; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+    <h3 style="margin-top: 0; margin-bottom: 16px; color: #fff; font-size: 16px; text-align: center; font-weight: bold;">📊 Наш прогресс (${targetDate})</h3>
+
+    <div style="margin-bottom: 18px;">
+      <div style="display:flex; justify-content: space-between; font-size: 13px; color: #ddd; margin-bottom: 6px;">
+        <span>🔥 Калории (Я)</span>
+        <span style="font-weight:bold;">${myKcal} / ${myTargetK}</span>
+      </div>
+      <div style="height: 14px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
+        <div style="height: 100%; width: ${myKcalPct}%; background: linear-gradient(90deg, #ec4899, #f43f5e); border-radius: 8px;"></div>
+      </div>
+
+      <div style="display:flex; justify-content: space-between; font-size: 13px; color: #ddd; margin-bottom: 6px;">
+        <span>🔥 Калории (${escapeHtml(fName)})</span>
+        <span style="font-weight:bold;">${fKcal} / ${fTargetK}</span>
+      </div>
+      <div style="height: 14px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
+        <div style="height: 100%; width: ${fKcalPct}%; background: linear-gradient(90deg, #a855f7, #d946ef); border-radius: 8px;"></div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex; justify-content: space-between; font-size: 13px; color: #ddd; margin-bottom: 6px;">
+        <span>💧 Вода (Я)</span>
+        <span style="font-weight:bold;">${myWater} / ${myWaterGoal} мл</span>
+      </div>
+      <div style="height: 14px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
+        <div style="height: 100%; width: ${myWaterPct}%; background: linear-gradient(90deg, #3b82f6, #0ea5e9); border-radius: 8px;"></div>
+      </div>
+
+      <div style="display:flex; justify-content: space-between; font-size: 13px; color: #ddd; margin-bottom: 6px;">
+        <span>💧 Вода (${escapeHtml(fName)})</span>
+        <span style="font-weight:bold;">${fWater} / ${fWaterGoal} мл</span>
+      </div>
+      <div style="height: 14px; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
+        <div style="height: 100%; width: ${fWaterPct}%; background: linear-gradient(90deg, #06b6d4, #2dd4bf); border-radius: 8px;"></div>
+      </div>
+    </div>
+  </div>
+  `;
+
+  if (friendsEl) friendsEl.innerHTML = comparisonHTML + friendsHTML;
 }
